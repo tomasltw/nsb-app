@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 
 const USERS = {
-  coach: { email: "coach@nsb.com", password: "nsb2024", role: "coach", name: "Coach NSB" },
-  "atleta1@nsb.com": { email: "atleta1@nsb.com", password: "1234", role: "athlete", name: "Tomás Araya", plan: "TROOPS Personalizado", expiry: "2026-05-31", type: "Mixto" },
-  "atleta2@nsb.com": { email: "atleta2@nsb.com", password: "1234", role: "athlete", name: "Piero Gorichon", plan: "Online", expiry: "2026-06-15", type: "Online" },
+  const USERS = {
+  coach: { email: "coach@nsb.com", password: "nsb2024", role: "coach", name: "Tomás Coach" },
 };
 
 const SCHEDULE = [
