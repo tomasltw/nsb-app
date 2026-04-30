@@ -1,59 +1,39 @@
 import { useState, useEffect } from "react";
+import { createClient } from "@supabase/supabase-js";
 
-const USERS = {
-  const USERS = {
-  coach: { email: "coach@nsb.com", password: "nsb2024", role: "coach", name: "Tomás Coach" },
+const supabase = createClient(
+  "https://xotytitxgpuuwqgeccih.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhvdHl0aXR4Z3B1dXdxZ2VjY2loIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0OTc0OTgsImV4cCI6MjA5MzA3MzQ5OH0.sGITzHaZ72OY8m5a6ulwHCpczcWWIjKmhDx2y8yJjNw"
+);
+
+const styles = {
+  app: { minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: "'Barlow Condensed', 'Barlow', sans-serif" },
+  nav: { background: "#111", borderBottom: "1px solid #222", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, position: "sticky", top: 0, zIndex: 100 },
+  navBtn: (active) => ({ background: active ? "#e53e3e" : "transparent", color: active ? "#fff" : "#999", border: "none", padding: "8px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", transition: "all 0.2s", borderRadius: 6 }),
+  main: { padding: "32px 24px", maxWidth: 1100, margin: "0 auto" },
+  card: { background: "#161616", border: "1px solid #2a2a2a", borderRadius: 12, padding: 24, marginBottom: 20 },
+  h1: { fontSize: 36, fontWeight: 800, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 4 },
+  h2: { fontSize: 22, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 16 },
+  h3: { fontSize: 13, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#666", marginBottom: 8 },
+  redBtn: { background: "#e53e3e", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" },
+  ghostBtn: { background: "transparent", color: "#999", border: "1px solid #333", padding: "10px 20px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase" },
+  input: { background: "#1a1a1a", border: "1px solid #333", borderRadius: 8, padding: "12px 16px", color: "#fff", fontFamily: "inherit", fontSize: 15, width: "100%", boxSizing: "border-box", outline: "none" },
+  tag: (color) => ({ display: "inline-block", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: color === "red" ? "#e53e3e22" : color === "green" ? "#22c55e22" : "#f9731622", color: color === "red" ? "#e53e3e" : color === "green" ? "#22c55e" : "#f97316", border: `1px solid ${color === "red" ? "#e53e3e44" : color === "green" ? "#22c55e44" : "#f9731644"}` }),
+  grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
+  grid3: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 },
 };
 
-const SCHEDULE = [
-  { id: 1, day: "Lunes", time: "07:00", spots: 3, booked: ["Tomás Araya"] },
-  { id: 2, day: "Lunes", time: "18:00", spots: 4, booked: [] },
-  { id: 3, day: "Miércoles", time: "07:00", spots: 3, booked: ["Piero Gorichon"] },
-  { id: 4, day: "Miércoles", time: "18:00", spots: 4, booked: ["Tomás Araya"] },
-  { id: 5, day: "Viernes", time: "07:00", spots: 3, booked: [] },
-  { id: 6, day: "Viernes", time: "18:00", spots: 4, booked: [] },
-  { id: 7, day: "Sábado", time: "09:00", spots: 6, booked: ["Tomás Araya", "Piero Gorichon"] },
-];
-
-const WORKOUTS = {
-  "2026-04-28": { title: "Upper Body Strength", exercises: ["Press de banca 4x8", "Remo con barra 4x8", "Press militar 3x10", "Curl de bíceps 3x12"], done: true },
-  "2026-04-29": { title: "Lower Body Power", exercises: ["Sentadilla trasera 5x5", "Peso muerto rumano 4x8", "Prensa 3x15", "Elevación de talones 4x20"], done: false },
-  "2026-04-30": { title: "Cardio & Core", exercises: ["HIIT 20 min", "Plancha 3x60s", "Crunch 3x20", "Mountain climbers 3x30s"], done: false },
-  "2026-05-02": { title: "Push Day", exercises: ["Press inclinado 4x8", "Aperturas 3x12", "Press francés 3x12", "Extensión tríceps 3x15"], done: false },
-};
-
-const COMMENTS = [
-  { id: 1, from: "Coach", to: "Tomás Araya", text: "Excelente semana Tomás, noto progreso en la sentadilla. Sigue así!", date: "2026-04-27", read: false },
-  { id: 2, from: "Tomás Araya", to: "Coach", text: "Gracias coach! El lunes sentí mucho ardor en el hombro derecho durante el press.", date: "2026-04-28", read: true },
-  { id: 3, from: "Coach", to: "Piero Gorichon", text: "Piero, recuerda mantener la espalda neutra en el peso muerto.", date: "2026-04-26", read: true },
-];
-
-const NSBLogo = ({ size = 40 }) => (
-  <svg width={size * 2.2} height={size} viewBox="0 0 220 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <g>
-      <path d="M10 90 L10 10 L30 10 L70 70 L70 10 L90 10 L90 90 L70 90 L30 30 L30 90 Z" fill="none" stroke="white" strokeWidth="4" strokeLinejoin="round"/>
-      <path d="M100 90 L100 10 L120 10 L120 50 Q120 70 140 70 Q160 70 160 50 L160 10 L180 10 L180 50 Q180 85 140 85 Q100 85 100 50 Z" fill="none" stroke="white" strokeWidth="4" strokeLinejoin="round"/>
-      <path d="M190 10 L220 10 Q240 10 240 30 Q240 45 225 48 Q242 51 242 68 Q242 90 218 90 L190 90 Z M205 45 L218 45 Q225 45 225 35 Q225 25 218 25 L205 25 Z M205 78 L220 78 Q230 78 230 68 Q230 58 220 58 L205 58 Z" fill="none" stroke="white" strokeWidth="4" strokeLinejoin="round"/>
-    </g>
+const NSBLogo = () => (
+  <svg width="80" height="32" viewBox="0 0 120 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <text x="0" y="40" fontFamily="Arial Black, sans-serif" fontSize="44" fontWeight="900" fill="none" stroke="white" strokeWidth="2" letterSpacing="-2">NSB</text>
   </svg>
 );
 
 const getDaysUntilExpiry = (dateStr) => {
-  const today = new Date("2026-04-29");
+  if (!dateStr) return 0;
+  const today = new Date();
   const exp = new Date(dateStr);
   return Math.ceil((exp - today) / (1000 * 60 * 60 * 24));
-};
-
-const getWeekDates = () => {
-  const today = new Date("2026-04-29");
-  const day = today.getDay();
-  const monday = new Date(today);
-  monday.setDate(today.getDate() - (day === 0 ? 6 : day - 1));
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    return d;
-  });
 };
 
 export default function NSBApp() {
@@ -61,111 +41,168 @@ export default function NSBApp() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [view, setView] = useState("home");
-  const [schedule, setSchedule] = useState(SCHEDULE);
-  const [comments, setComments] = useState(COMMENTS);
-  const [newComment, setNewComment] = useState("");
-  const [selectedAthlete, setSelectedAthlete] = useState("Tomás Araya");
-  const [workouts, setWorkouts] = useState(WORKOUTS);
-  const [selectedDate, setSelectedDate] = useState("2026-04-29");
 
-  const weekDates = getWeekDates();
-  const athletes = Object.values(USERS).filter(u => u.role === "athlete");
+  // Coach state
+  const [athletes, setAthletes] = useState([]);
+  const [schedules, setSchedules] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [newMsg, setNewMsg] = useState("");
+  const [selectedAthlete, setSelectedAthlete] = useState(null);
+  const [workouts, setWorkouts] = useState([]);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
 
-  const login = () => {
-    const found = USERS[email] || (email === "coach@nsb.com" ? USERS.coach : null);
-    if (found && found.password === password) {
-      setUser(found);
-      setError("");
-      setView("home");
-    } else {
+  // Forms
+  const [showAthleteForm, setShowAthleteForm] = useState(false);
+  const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [showWorkoutForm, setShowWorkoutForm] = useState(false);
+  const [athleteForm, setAthleteForm] = useState({ name: "", email: "", password: "", plan: "", expiry: "", type: "Online" });
+  const [scheduleForm, setScheduleForm] = useState({ day: "Lunes", time: "", spots: 4 });
+  const [workoutForm, setWorkoutForm] = useState({ title: "", exercises: "", date: "", athlete_id: "" });
+
+  const login = async () => {
+    setLoading(true);
+    setError("");
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .eq("password", password)
+      .single();
+    if (error || !data) {
       setError("Email o contraseña incorrectos");
+    } else {
+      setUser(data);
+      loadData(data);
+    }
+    setLoading(false);
+  };
+
+  const loadData = async (u) => {
+    if (u.role === "coach") {
+      const { data: ath } = await supabase.from("users").select("*").eq("role", "athlete");
+      setAthletes(ath || []);
+      const { data: sch } = await supabase.from("schedules").select("*, bookings(*, users(*))");
+      setSchedules(sch || []);
+      const { data: msgs } = await supabase.from("messages").select("*, from:from_id(name), to:to_id(name)").order("created_at");
+      setMessages(msgs || []);
+      const { data: wrk } = await supabase.from("workouts").select("*, users(name)").order("date");
+      setWorkouts(wrk || []);
+    } else {
+      const { data: sch } = await supabase.from("schedules").select("*, bookings(*, users(*))");
+      setSchedules(sch || []);
+      const { data: msgs } = await supabase.from("messages").select("*, from:from_id(name), to:to_id(name)").eq("to_id", u.id).or(`from_id.eq.${u.id}`).order("created_at");
+      setMessages(msgs || []);
+      const { data: wrk } = await supabase.from("workouts").select("*").eq("athlete_id", u.id).order("date");
+      setWorkouts(wrk || []);
     }
   };
 
   const logout = () => { setUser(null); setEmail(""); setPassword(""); setView("home"); };
 
-  const bookSlot = (id) => {
-    setSchedule(s => s.map(slot => slot.id === id
-      ? { ...slot, booked: slot.booked.includes(user.name) ? slot.booked.filter(n => n !== user.name) : [...slot.booked, user.name] }
-      : slot));
+  const createAthlete = async () => {
+    const { error } = await supabase.from("users").insert({ ...athleteForm, role: "athlete" });
+    if (!error) {
+      setShowAthleteForm(false);
+      setAthleteForm({ name: "", email: "", password: "", plan: "", expiry: "", type: "Online" });
+      loadData(user);
+    }
   };
 
-  const sendComment = () => {
-    if (!newComment.trim()) return;
-    const target = user.role === "coach" ? selectedAthlete : "Coach";
-    setComments(c => [...c, { id: Date.now(), from: user.name, to: target, text: newComment, date: "2026-04-29", read: false }]);
-    setNewComment("");
+  const deleteAthlete = async (id) => {
+    await supabase.from("users").delete().eq("id", id);
+    loadData(user);
   };
 
-  const myComments = user?.role === "coach"
-    ? comments.filter(c => c.from === "Coach" || c.to === "Coach")
-    : comments.filter(c => c.from === user?.name || c.to === user?.name);
-
-  const daysLeft = user?.expiry ? getDaysUntilExpiry(user.expiry) : 0;
-
-  const styles = {
-    app: { minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: "'Barlow Condensed', 'Barlow', sans-serif" },
-    nav: { background: "#111", borderBottom: "1px solid #222", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, position: "sticky", top: 0, zIndex: 100 },
-    navLinks: { display: "flex", gap: 8 },
-    navBtn: (active) => ({ background: active ? "#e53e3e" : "transparent", color: active ? "#fff" : "#999", border: "none", padding: "8px 16px", cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", transition: "all 0.2s" }),
-    main: { padding: "32px 24px", maxWidth: 1100, margin: "0 auto" },
-    card: { background: "#161616", border: "1px solid #2a2a2a", borderRadius: 12, padding: 24, marginBottom: 20 },
-    redCard: { background: "#1a0a0a", border: "1px solid #e53e3e44", borderRadius: 12, padding: 24, marginBottom: 20 },
-    h1: { fontSize: 36, fontWeight: 800, letterSpacing: "0.02em", textTransform: "uppercase", marginBottom: 4 },
-    h2: { fontSize: 22, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 16 },
-    h3: { fontSize: 16, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.08em", color: "#999", marginBottom: 12 },
-    redBtn: { background: "#e53e3e", color: "#fff", border: "none", padding: "12px 24px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: 14, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", transition: "all 0.2s" },
-    ghostBtn: { background: "transparent", color: "#999", border: "1px solid #333", padding: "10px 20px", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase", transition: "all 0.2s" },
-    input: { background: "#1a1a1a", border: "1px solid #333", borderRadius: 8, padding: "12px 16px", color: "#fff", fontFamily: "inherit", fontSize: 15, width: "100%", boxSizing: "border-box", outline: "none" },
-    tag: (color) => ({ display: "inline-block", padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", background: color === "red" ? "#e53e3e22" : color === "green" ? "#22c55e22" : "#f9731622", color: color === "red" ? "#e53e3e" : color === "green" ? "#22c55e" : "#f97316", border: `1px solid ${color === "red" ? "#e53e3e44" : color === "green" ? "#22c55e44" : "#f9731644"}` }),
-    grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 },
-    grid3: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 },
+  const createSchedule = async () => {
+    await supabase.from("schedules").insert({ ...scheduleForm, spots: parseInt(scheduleForm.spots) });
+    setShowScheduleForm(false);
+    setScheduleForm({ day: "Lunes", time: "", spots: 4 });
+    loadData(user);
   };
 
-  // LOGIN SCREEN
+  const deleteSchedule = async (id) => {
+    await supabase.from("schedules").delete().eq("id", id);
+    loadData(user);
+  };
+
+  const createWorkout = async () => {
+    await supabase.from("workouts").insert({
+      ...workoutForm,
+      exercises: workoutForm.exercises.split("\n").filter(e => e.trim()),
+    });
+    setShowWorkoutForm(false);
+    setWorkoutForm({ title: "", exercises: "", date: "", athlete_id: "" });
+    loadData(user);
+  };
+
+  const bookSlot = async (scheduleId) => {
+    const schedule = schedules.find(s => s.id === scheduleId);
+    const myBooking = schedule?.bookings?.find(b => b.athlete_id === user.id);
+    if (myBooking) {
+      await supabase.from("bookings").delete().eq("id", myBooking.id);
+    } else {
+      await supabase.from("bookings").insert({ schedule_id: scheduleId, athlete_id: user.id });
+    }
+    loadData(user);
+  };
+
+  const markDone = async (workoutId) => {
+    await supabase.from("workouts").update({ done: true }).eq("id", workoutId);
+    loadData(user);
+  };
+
+  const sendMessage = async () => {
+    if (!newMsg.trim()) return;
+    const toId = user.role === "coach" ? selectedAthlete : athletes.find(a => a.role === "coach")?.id;
+    if (!toId) return;
+    await supabase.from("messages").insert({ from_id: user.id, to_id: toId, text: newMsg });
+    setNewMsg("");
+    loadData(user);
+  };
+
+  const days = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+
   if (!user) {
     return (
       <div style={{ ...styles.app, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
         <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet" />
         <div style={{ textAlign: "center", marginBottom: 48 }}>
-          <NSBLogo size={36} />
+          <NSBLogo />
           <p style={{ color: "#555", letterSpacing: "0.3em", fontSize: 11, marginTop: 8, textTransform: "uppercase" }}>Never Stop Building</p>
         </div>
         <div style={{ background: "#111", border: "1px solid #e53e3e44", borderRadius: 16, padding: "40px 48px", width: "100%", maxWidth: 420 }}>
           <h2 style={{ ...styles.h2, marginBottom: 32 }}>Iniciar Sesión</h2>
           <div style={{ marginBottom: 16 }}>
-            <p style={{ ...styles.h3, marginBottom: 6, fontSize: 11 }}>Email</p>
+            <p style={{ ...styles.h3, marginBottom: 6 }}>Email</p>
             <input style={styles.input} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="tu@email.com" onKeyDown={e => e.key === "Enter" && login()} />
           </div>
           <div style={{ marginBottom: 24 }}>
-            <p style={{ ...styles.h3, marginBottom: 6, fontSize: 11 }}>Contraseña</p>
+            <p style={{ ...styles.h3, marginBottom: 6 }}>Contraseña</p>
             <input style={styles.input} type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && login()} />
           </div>
           {error && <p style={{ color: "#e53e3e", fontSize: 13, marginBottom: 16 }}>{error}</p>}
-          <button style={{ ...styles.redBtn, width: "100%", fontSize: 16 }} onClick={login}>Entrar</button>
+          <button style={{ ...styles.redBtn, width: "100%", fontSize: 16 }} onClick={login} disabled={loading}>
+            {loading ? "Entrando..." : "Entrar"}
+          </button>
           <p style={{ color: "#444", fontSize: 12, textAlign: "center", marginTop: 24, fontStyle: "italic" }}>tus metas merecen un plan real.</p>
-        </div>
-        <div style={{ marginTop: 24, color: "#333", fontSize: 12 }}>
-          Coach: coach@nsb.com / nsb2024 · Atleta: atleta1@nsb.com / 1234
         </div>
       </div>
     );
   }
 
-  // COACH DASHBOARD
+  // COACH
   if (user.role === "coach") {
     return (
       <div style={styles.app}>
         <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet" />
         <nav style={styles.nav}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <NSBLogo size={28} />
-          </div>
-          <div style={styles.navLinks}>
-            {["home", "atletas", "horarios", "mensajes"].map(v => (
+          <NSBLogo />
+          <div style={{ display: "flex", gap: 4 }}>
+            {["home", "atletas", "planificacion", "horarios", "mensajes"].map(v => (
               <button key={v} style={styles.navBtn(view === v)} onClick={() => setView(v)}>
-                {v === "home" ? "Dashboard" : v === "atletas" ? "Atletas" : v === "horarios" ? "Horarios" : "Mensajes"}
+                {v === "home" ? "Dashboard" : v === "atletas" ? "Atletas" : v === "planificacion" ? "Planificación" : v === "horarios" ? "Horarios" : "Mensajes"}
               </button>
             ))}
           </div>
@@ -175,87 +212,116 @@ export default function NSBApp() {
         <div style={styles.main}>
           {view === "home" && (
             <>
-              <div style={{ marginBottom: 32 }}>
-                <h1 style={styles.h1}>Bienvenido, <span style={{ color: "#e53e3e" }}>Coach</span></h1>
-                <p style={{ color: "#666", fontSize: 15 }}>Resumen de tu plataforma NSB</p>
-              </div>
+              <h1 style={styles.h1}>Bienvenido, <span style={{ color: "#e53e3e" }}>{user.name}</span></h1>
+              <p style={{ color: "#666", marginBottom: 24 }}>Panel de control NSB</p>
               <div style={styles.grid3}>
                 <div style={{ ...styles.card, borderLeft: "3px solid #e53e3e" }}>
                   <p style={styles.h3}>Atletas activos</p>
                   <p style={{ fontSize: 48, fontWeight: 800, color: "#e53e3e", lineHeight: 1 }}>{athletes.length}</p>
                 </div>
                 <div style={{ ...styles.card, borderLeft: "3px solid #f97316" }}>
-                  <p style={styles.h3}>Sesiones semana</p>
-                  <p style={{ fontSize: 48, fontWeight: 800, color: "#f97316", lineHeight: 1 }}>7</p>
+                  <p style={styles.h3}>Horarios creados</p>
+                  <p style={{ fontSize: 48, fontWeight: 800, color: "#f97316", lineHeight: 1 }}>{schedules.length}</p>
                 </div>
                 <div style={{ ...styles.card, borderLeft: "3px solid #22c55e" }}>
-                  <p style={styles.h3}>Mensajes nuevos</p>
-                  <p style={{ fontSize: 48, fontWeight: 800, color: "#22c55e", lineHeight: 1 }}>{comments.filter(c => !c.read && c.from !== "Coach").length}</p>
+                  <p style={styles.h3}>Planificaciones</p>
+                  <p style={{ fontSize: 48, fontWeight: 800, color: "#22c55e", lineHeight: 1 }}>{workouts.length}</p>
                 </div>
               </div>
-              <div style={styles.grid2}>
-                <div style={styles.card}>
-                  <h2 style={styles.h2}>Atletas</h2>
-                  {athletes.map(a => {
+              <div style={styles.card}>
+                <h2 style={styles.h2}>Atletas</h2>
+                {athletes.length === 0 ? <p style={{ color: "#444" }}>No hay atletas aún. Ve a la sección Atletas para agregar.</p> :
+                  athletes.map(a => {
                     const d = getDaysUntilExpiry(a.expiry);
                     return (
-                      <div key={a.email} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #222" }}>
+                      <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 0", borderBottom: "1px solid #1a1a1a" }}>
                         <div>
-                          <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 2 }}>{a.name}</p>
+                          <p style={{ fontWeight: 700, fontSize: 16 }}>{a.name}</p>
                           <p style={{ color: "#666", fontSize: 13 }}>{a.plan} · {a.type}</p>
                         </div>
-                        <span style={styles.tag(d < 15 ? "red" : d < 30 ? "orange" : "green")}>
-                          {d} días
-                        </span>
+                        <span style={styles.tag(d < 15 ? "red" : d < 30 ? "orange" : "green")}>{d} días</span>
                       </div>
                     );
                   })}
-                </div>
-                <div style={styles.card}>
-                  <h2 style={styles.h2}>Próximas sesiones</h2>
-                  {schedule.filter(s => s.booked.length > 0).slice(0, 4).map(s => (
-                    <div key={s.id} style={{ padding: "12px 0", borderBottom: "1px solid #222" }}>
-                      <p style={{ fontWeight: 700, marginBottom: 4 }}>{s.day} {s.time}</p>
-                      <p style={{ color: "#666", fontSize: 13 }}>{s.booked.join(", ")}</p>
-                    </div>
-                  ))}
-                </div>
               </div>
             </>
           )}
 
           {view === "atletas" && (
             <>
-              <h1 style={{ ...styles.h1, marginBottom: 24 }}>Gestión de <span style={{ color: "#e53e3e" }}>Atletas</span></h1>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <h1 style={{ ...styles.h1, marginBottom: 0 }}>Gestión de <span style={{ color: "#e53e3e" }}>Atletas</span></h1>
+                <button style={styles.redBtn} onClick={() => setShowAthleteForm(!showAthleteForm)}>+ Agregar atleta</button>
+              </div>
+
+              {showAthleteForm && (
+                <div style={styles.card}>
+                  <h2 style={styles.h2}>Nuevo atleta</h2>
+                  <div style={styles.grid2}>
+                    <div>
+                      <p style={styles.h3}>Nombre</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} value={athleteForm.name} onChange={e => setAthleteForm({ ...athleteForm, name: e.target.value })} placeholder="Nombre completo" />
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Email</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} value={athleteForm.email} onChange={e => setAthleteForm({ ...athleteForm, email: e.target.value })} placeholder="email@ejemplo.com" />
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Contraseña</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} value={athleteForm.password} onChange={e => setAthleteForm({ ...athleteForm, password: e.target.value })} placeholder="Contraseña" />
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Plan</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} value={athleteForm.plan} onChange={e => setAthleteForm({ ...athleteForm, plan: e.target.value })} placeholder="Ej: NSB Personalizado" />
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Vencimiento</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} type="date" value={athleteForm.expiry} onChange={e => setAthleteForm({ ...athleteForm, expiry: e.target.value })} />
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Tipo</p>
+                      <select style={{ ...styles.input, marginBottom: 12 }} value={athleteForm.type} onChange={e => setAthleteForm({ ...athleteForm, type: e.target.value })}>
+                        <option>Online</option>
+                        <option>Presencial</option>
+                        <option>Mixto</option>
+                      </select>
+                    </div>
+                  </div>
+                  <button style={styles.redBtn} onClick={createAthlete}>Crear atleta</button>
+                </div>
+              )}
+
               <div style={styles.grid2}>
                 {athletes.map(a => {
                   const d = getDaysUntilExpiry(a.expiry);
-                  const myW = Object.entries(workouts).filter(([,w]) => w.done).length;
                   return (
-                    <div key={a.email} style={styles.card}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+                    <div key={a.id} style={styles.card}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
                         <div>
                           <h2 style={{ ...styles.h2, marginBottom: 4 }}>{a.name}</h2>
                           <span style={styles.tag("orange")}>{a.type}</span>
                         </div>
-                        <span style={styles.tag(d < 15 ? "red" : d < 30 ? "orange" : "green")}>{d} días restantes</span>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                          <span style={styles.tag(d < 15 ? "red" : d < 30 ? "orange" : "green")}>{d} días</span>
+                          <button style={{ ...styles.ghostBtn, padding: "6px 12px", fontSize: 11, color: "#e53e3e", borderColor: "#e53e3e44" }} onClick={() => deleteAthlete(a.id)}>Eliminar</button>
+                        </div>
                       </div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div style={{ background: "#0d0d0d", borderRadius: 8, padding: 12 }}>
-                          <p style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Plan</p>
-                          <p style={{ fontWeight: 600, fontSize: 14 }}>{a.plan}</p>
+                          <p style={styles.h3}>Plan</p>
+                          <p style={{ fontWeight: 600 }}>{a.plan || "Sin plan"}</p>
                         </div>
                         <div style={{ background: "#0d0d0d", borderRadius: 8, padding: 12 }}>
-                          <p style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Vencimiento</p>
-                          <p style={{ fontWeight: 600, fontSize: 14 }}>{a.expiry}</p>
+                          <p style={styles.h3}>Vencimiento</p>
+                          <p style={{ fontWeight: 600 }}>{a.expiry || "Sin fecha"}</p>
                         </div>
                         <div style={{ background: "#0d0d0d", borderRadius: 8, padding: 12 }}>
-                          <p style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Entrenamientos</p>
-                          <p style={{ fontWeight: 600, fontSize: 14, color: "#22c55e" }}>{myW} completados</p>
+                          <p style={styles.h3}>Email</p>
+                          <p style={{ fontWeight: 600, fontSize: 13 }}>{a.email}</p>
                         </div>
                         <div style={{ background: "#0d0d0d", borderRadius: 8, padding: 12 }}>
-                          <p style={{ color: "#666", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Sesiones agendadas</p>
-                          <p style={{ fontWeight: 600, fontSize: 14 }}>{schedule.filter(s => s.booked.includes(a.name)).length}</p>
+                          <p style={styles.h3}>Contraseña</p>
+                          <p style={{ fontWeight: 600 }}>{a.password}</p>
                         </div>
                       </div>
                     </div>
@@ -265,28 +331,110 @@ export default function NSBApp() {
             </>
           )}
 
-          {view === "horarios" && (
+          {view === "planificacion" && (
             <>
-              <h1 style={{ ...styles.h1, marginBottom: 24 }}>Gestión de <span style={{ color: "#e53e3e" }}>Horarios</span></h1>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-                {schedule.map(s => (
-                  <div key={s.id} style={styles.card}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <h1 style={{ ...styles.h1, marginBottom: 0 }}>Planificación <span style={{ color: "#e53e3e" }}>Diaria</span></h1>
+                <button style={styles.redBtn} onClick={() => setShowWorkoutForm(!showWorkoutForm)}>+ Agregar entrenamiento</button>
+              </div>
+
+              {showWorkoutForm && (
+                <div style={styles.card}>
+                  <h2 style={styles.h2}>Nuevo entrenamiento</h2>
+                  <div style={styles.grid2}>
+                    <div>
+                      <p style={styles.h3}>Atleta</p>
+                      <select style={{ ...styles.input, marginBottom: 12 }} value={workoutForm.athlete_id} onChange={e => setWorkoutForm({ ...workoutForm, athlete_id: e.target.value })}>
+                        <option value="">Seleccionar atleta</option>
+                        {athletes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Fecha</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} type="date" value={workoutForm.date} onChange={e => setWorkoutForm({ ...workoutForm, date: e.target.value })} />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <p style={styles.h3}>Título del entrenamiento</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} value={workoutForm.title} onChange={e => setWorkoutForm({ ...workoutForm, title: e.target.value })} placeholder="Ej: Upper Body Strength" />
+                    </div>
+                    <div style={{ gridColumn: "1 / -1" }}>
+                      <p style={styles.h3}>Ejercicios (uno por línea)</p>
+                      <textarea style={{ ...styles.input, height: 120, resize: "vertical", marginBottom: 12 }} value={workoutForm.exercises} onChange={e => setWorkoutForm({ ...workoutForm, exercises: e.target.value })} placeholder={"Press de banca 4x8\nRemo con barra 4x8\nPress militar 3x10"} />
+                    </div>
+                  </div>
+                  <button style={styles.redBtn} onClick={createWorkout}>Crear entrenamiento</button>
+                </div>
+              )}
+
+              <div>
+                {workouts.length === 0 ? (
+                  <div style={styles.card}><p style={{ color: "#444" }}>No hay entrenamientos creados aún.</p></div>
+                ) : workouts.map(w => (
+                  <div key={w.id} style={styles.card}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                       <div>
+                        <p style={{ fontWeight: 800, fontSize: 18, color: "#e53e3e", textTransform: "uppercase" }}>{w.title}</p>
+                        <p style={{ color: "#666", fontSize: 13 }}>{w.users?.name} · {w.date}</p>
+                      </div>
+                      <span style={styles.tag(w.done ? "green" : "orange")}>{w.done ? "✓ Completado" : "Pendiente"}</span>
+                    </div>
+                    {w.exercises?.map((ex, i) => (
+                      <p key={i} style={{ color: "#bbb", fontSize: 14, padding: "6px 0", borderBottom: "1px solid #1a1a1a" }}>· {ex}</p>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {view === "horarios" && (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+                <h1 style={{ ...styles.h1, marginBottom: 0 }}>Gestión de <span style={{ color: "#e53e3e" }}>Horarios</span></h1>
+                <button style={styles.redBtn} onClick={() => setShowScheduleForm(!showScheduleForm)}>+ Agregar horario</button>
+              </div>
+
+              {showScheduleForm && (
+                <div style={styles.card}>
+                  <h2 style={styles.h2}>Nuevo horario</h2>
+                  <div style={styles.grid3}>
+                    <div>
+                      <p style={styles.h3}>Día</p>
+                      <select style={{ ...styles.input, marginBottom: 12 }} value={scheduleForm.day} onChange={e => setScheduleForm({ ...scheduleForm, day: e.target.value })}>
+                        {days.map(d => <option key={d}>{d}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Hora</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} type="time" value={scheduleForm.time} onChange={e => setScheduleForm({ ...scheduleForm, time: e.target.value })} />
+                    </div>
+                    <div>
+                      <p style={styles.h3}>Cupos</p>
+                      <input style={{ ...styles.input, marginBottom: 12 }} type="number" value={scheduleForm.spots} onChange={e => setScheduleForm({ ...scheduleForm, spots: e.target.value })} />
+                    </div>
+                  </div>
+                  <button style={styles.redBtn} onClick={createSchedule}>Crear horario</button>
+                </div>
+              )}
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                {schedules.map(s => (
+                  <div key={s.id} style={styles.card}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
                         <p style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase" }}>{s.day}</p>
-                        <p style={{ color: "#e53e3e", fontSize: 24, fontWeight: 800 }}>{s.time}</p>
+                        <p style={{ color: "#e53e3e", fontSize: 28, fontWeight: 800, lineHeight: 1 }}>{s.time}</p>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <p style={{ color: "#666", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.1em" }}>Cupos</p>
-                        <p style={{ fontWeight: 700, fontSize: 20 }}>{s.booked.length}/{s.spots}</p>
+                        <p style={styles.h3}>Cupos</p>
+                        <p style={{ fontWeight: 700, fontSize: 20 }}>{s.bookings?.length || 0}/{s.spots}</p>
                       </div>
                     </div>
-                    <div style={{ marginTop: 8 }}>
-                      {s.booked.length === 0
-                        ? <p style={{ color: "#444", fontSize: 13, fontStyle: "italic" }}>Sin reservas</p>
-                        : s.booked.map(n => <p key={n} style={{ color: "#ccc", fontSize: 13, padding: "4px 0" }}>· {n}</p>)
-                      }
+                    <div style={{ marginTop: 12 }}>
+                      {s.bookings?.length === 0 ? <p style={{ color: "#444", fontSize: 13 }}>Sin reservas</p> :
+                        s.bookings?.map(b => <p key={b.id} style={{ color: "#ccc", fontSize: 13, padding: "3px 0" }}>· {b.users?.name}</p>)}
                     </div>
+                    <button style={{ ...styles.ghostBtn, marginTop: 12, width: "100%", fontSize: 11, color: "#e53e3e", borderColor: "#e53e3e44" }} onClick={() => deleteSchedule(s.id)}>Eliminar</button>
                   </div>
                 ))}
               </div>
@@ -298,23 +446,24 @@ export default function NSBApp() {
               <h1 style={{ ...styles.h1, marginBottom: 24 }}>Mensajes <span style={{ color: "#e53e3e" }}>con Atletas</span></h1>
               <div style={styles.grid2}>
                 <div style={styles.card}>
-                  <p style={styles.h3}>Enviar mensaje</p>
-                  <select style={{ ...styles.input, marginBottom: 12 }} value={selectedAthlete} onChange={e => setSelectedAthlete(e.target.value)}>
-                    {athletes.map(a => <option key={a.email} value={a.name}>{a.name}</option>)}
+                  <p style={styles.h3}>Enviar mensaje a</p>
+                  <select style={{ ...styles.input, marginBottom: 12 }} value={selectedAthlete || ""} onChange={e => setSelectedAthlete(e.target.value)}>
+                    <option value="">Seleccionar atleta</option>
+                    {athletes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
-                  <textarea style={{ ...styles.input, height: 100, resize: "vertical", marginBottom: 12 }} placeholder="Escribe tu comentario..." value={newComment} onChange={e => setNewComment(e.target.value)} />
-                  <button style={styles.redBtn} onClick={sendComment}>Enviar</button>
+                  <textarea style={{ ...styles.input, height: 100, resize: "vertical", marginBottom: 12 }} placeholder="Escribe tu mensaje..." value={newMsg} onChange={e => setNewMsg(e.target.value)} />
+                  <button style={styles.redBtn} onClick={sendMessage}>Enviar</button>
                 </div>
                 <div style={styles.card}>
                   <p style={styles.h3}>Historial</p>
                   <div style={{ maxHeight: 400, overflowY: "auto" }}>
-                    {comments.slice().reverse().map(c => (
-                      <div key={c.id} style={{ padding: "12px 0", borderBottom: "1px solid #1a1a1a" }}>
+                    {messages.slice().reverse().map(m => (
+                      <div key={m.id} style={{ padding: "10px 0", borderBottom: "1px solid #1a1a1a" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                          <span style={{ fontWeight: 700, fontSize: 13, color: c.from === "Coach" ? "#e53e3e" : "#f97316" }}>{c.from} → {c.to}</span>
-                          <span style={{ color: "#444", fontSize: 11 }}>{c.date}</span>
+                          <span style={{ fontWeight: 700, fontSize: 12, color: "#e53e3e" }}>{m.from?.name} → {m.to?.name}</span>
+                          <span style={{ color: "#444", fontSize: 11 }}>{new Date(m.created_at).toLocaleDateString()}</span>
                         </div>
-                        <p style={{ color: "#bbb", fontSize: 14 }}>{c.text}</p>
+                        <p style={{ color: "#bbb", fontSize: 14 }}>{m.text}</p>
                       </div>
                     ))}
                   </div>
@@ -327,17 +476,23 @@ export default function NSBApp() {
     );
   }
 
-  // ATHLETE DASHBOARD
-  const todayWorkout = workouts[selectedDate];
-  const mySchedule = schedule.filter(s => s.booked.includes(user.name));
-  const myCommentsList = comments.filter(c => c.from === user.name || c.to === user.name);
+  // ATLETA
+  const myWorkouts = workouts;
+  const todayWorkout = myWorkouts.find(w => w.date === selectedDate);
+  const daysLeft = getDaysUntilExpiry(user.expiry);
+
+  const weekDates = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - d.getDay() + i + 1);
+    return d;
+  });
 
   return (
     <div style={styles.app}>
       <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet" />
       <nav style={styles.nav}>
-        <NSBLogo size={24} />
-        <div style={styles.navLinks}>
+        <NSBLogo />
+        <div style={{ display: "flex", gap: 4 }}>
           {["home", "planificacion", "horarios", "mensajes"].map(v => (
             <button key={v} style={styles.navBtn(view === v)} onClick={() => setView(v)}>
               {v === "home" ? "Inicio" : v === "planificacion" ? "Mi Plan" : v === "horarios" ? "Agendar" : "Mensajes"}
@@ -353,113 +508,100 @@ export default function NSBApp() {
       <div style={styles.main}>
         {view === "home" && (
           <>
-            <div style={{ marginBottom: 32 }}>
-              <h1 style={styles.h1}>{user.name.split(" ")[0]}, <span style={{ color: "#e53e3e" }}>Never Stop</span></h1>
-              <p style={{ color: "#666", fontSize: 15 }}>Aquí está tu resumen de hoy</p>
-            </div>
+            <h1 style={styles.h1}>{user.name.split(" ")[0]}, <span style={{ color: "#e53e3e" }}>Never Stop</span></h1>
+            <p style={{ color: "#666", marginBottom: 24 }}>Tu resumen de hoy</p>
+            {daysLeft < 15 && (
+              <div style={{ background: "#1a0505", border: "1px solid #e53e3e", borderRadius: 12, padding: "16px 20px", marginBottom: 20 }}>
+                <p style={{ color: "#e53e3e", fontWeight: 700 }}>⚠ Tu planificación vence en {daysLeft} días — contacta a tu coach.</p>
+              </div>
+            )}
             <div style={styles.grid3}>
-              <div style={{ ...styles.redCard, borderLeft: "3px solid #e53e3e" }}>
+              <div style={{ ...styles.card, borderLeft: "3px solid #e53e3e" }}>
                 <p style={styles.h3}>Plan activo</p>
-                <p style={{ fontWeight: 700, fontSize: 16 }}>{user.plan}</p>
-                <p style={{ color: "#f97316", fontSize: 13, marginTop: 4 }}>{user.type}</p>
+                <p style={{ fontWeight: 700, fontSize: 16 }}>{user.plan || "Sin plan"}</p>
+                <p style={{ color: "#f97316", fontSize: 13 }}>{user.type}</p>
               </div>
               <div style={{ ...styles.card, borderLeft: "3px solid #f97316" }}>
                 <p style={styles.h3}>Vencimiento</p>
                 <p style={{ fontWeight: 800, fontSize: 32, color: daysLeft < 15 ? "#e53e3e" : daysLeft < 30 ? "#f97316" : "#22c55e", lineHeight: 1 }}>{daysLeft}</p>
-                <p style={{ color: "#666", fontSize: 13, marginTop: 4 }}>días restantes</p>
+                <p style={{ color: "#666", fontSize: 13 }}>días restantes</p>
               </div>
               <div style={{ ...styles.card, borderLeft: "3px solid #22c55e" }}>
-                <p style={styles.h3}>Sesiones agendadas</p>
-                <p style={{ fontWeight: 800, fontSize: 32, color: "#22c55e", lineHeight: 1 }}>{mySchedule.length}</p>
-                <p style={{ color: "#666", fontSize: 13, marginTop: 4 }}>esta semana</p>
+                <p style={styles.h3}>Entrenamientos</p>
+                <p style={{ fontWeight: 800, fontSize: 32, color: "#22c55e", lineHeight: 1 }}>{myWorkouts.filter(w => w.done).length}</p>
+                <p style={{ color: "#666", fontSize: 13 }}>completados</p>
               </div>
             </div>
-            {daysLeft < 15 && (
-              <div style={{ background: "#1a0505", border: "1px solid #e53e3e", borderRadius: 12, padding: "16px 20px", marginBottom: 20 }}>
-                <p style={{ color: "#e53e3e", fontWeight: 700, fontSize: 15 }}>⚠ Tu planificación vence en {daysLeft} días</p>
-                <p style={{ color: "#999", fontSize: 13, marginTop: 4 }}>Contacta a tu coach para renovar.</p>
-              </div>
-            )}
             <div style={styles.card}>
-              <h2 style={styles.h2}>Entrenamiento de Hoy</h2>
+              <h2 style={styles.h2}>Entrenamiento de hoy</h2>
               {todayWorkout ? (
                 <>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-                    <h3 style={{ color: "#e53e3e", fontSize: 20, fontWeight: 800, textTransform: "uppercase" }}>{todayWorkout.title}</h3>
-                    <span style={styles.tag(todayWorkout.done ? "green" : "orange")}>{todayWorkout.done ? "Completado" : "Pendiente"}</span>
+                    <p style={{ fontWeight: 800, fontSize: 20, color: "#e53e3e", textTransform: "uppercase" }}>{todayWorkout.title}</p>
+                    <span style={styles.tag(todayWorkout.done ? "green" : "orange")}>{todayWorkout.done ? "✓ Completado" : "Pendiente"}</span>
                   </div>
-                  {todayWorkout.exercises.map((ex, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid #1a1a1a" }}>
-                      <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#e53e3e22", border: "1px solid #e53e3e44", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#e53e3e", flexShrink: 0 }}>{i + 1}</div>
-                      <p style={{ fontSize: 15 }}>{ex}</p>
-                    </div>
+                  {todayWorkout.exercises?.map((ex, i) => (
+                    <p key={i} style={{ color: "#bbb", fontSize: 15, padding: "8px 0", borderBottom: "1px solid #1a1a1a" }}>{i + 1}. {ex}</p>
                   ))}
+                  {!todayWorkout.done && (
+                    <button style={{ ...styles.redBtn, marginTop: 16 }} onClick={() => markDone(todayWorkout.id)}>Marcar como completado</button>
+                  )}
                 </>
-              ) : <p style={{ color: "#444", fontStyle: "italic" }}>Descanso activo hoy. Recupera bien.</p>}
+              ) : <p style={{ color: "#444" }}>No hay entrenamiento programado para hoy.</p>}
             </div>
           </>
         )}
 
         {view === "planificacion" && (
           <>
-            <h1 style={{ ...styles.h1, marginBottom: 8 }}>Mi <span style={{ color: "#e53e3e" }}>Planificación</span></h1>
-            <p style={{ color: "#666", marginBottom: 24 }}>Semana actual — {user.plan}</p>
+            <h1 style={{ ...styles.h1, marginBottom: 24 }}>Mi <span style={{ color: "#e53e3e" }}>Planificación</span></h1>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 8, marginBottom: 24 }}>
               {weekDates.map((d, i) => {
                 const key = d.toISOString().split("T")[0];
-                const w = workouts[key];
-                const isToday = key === "2026-04-29";
+                const w = myWorkouts.find(ww => ww.date === key);
+                const isToday = key === new Date().toISOString().split("T")[0];
                 return (
                   <div key={key} onClick={() => setSelectedDate(key)} style={{ ...styles.card, padding: 12, cursor: "pointer", border: selectedDate === key ? "1px solid #e53e3e" : isToday ? "1px solid #e53e3e44" : "1px solid #2a2a2a", background: selectedDate === key ? "#1a0a0a" : "#161616" }}>
-                    <p style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>{["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"][i]}</p>
-                    <p style={{ fontWeight: 800, fontSize: 22, lineHeight: 1, color: isToday ? "#e53e3e" : "#fff" }}>{d.getDate()}</p>
-                    <div style={{ marginTop: 8, width: 8, height: 8, borderRadius: "50%", background: !w ? "#333" : w.done ? "#22c55e" : "#f97316" }} />
+                    <p style={{ color: "#666", fontSize: 10, textTransform: "uppercase", letterSpacing: "0.1em" }}>{"LunMarMiéJueViéSábDom".slice(i * 3, i * 3 + 3)}</p>
+                    <p style={{ fontWeight: 800, fontSize: 22, color: isToday ? "#e53e3e" : "#fff" }}>{d.getDate()}</p>
+                    <div style={{ marginTop: 6, width: 8, height: 8, borderRadius: "50%", background: !w ? "#333" : w.done ? "#22c55e" : "#f97316" }} />
                   </div>
                 );
               })}
             </div>
             <div style={styles.card}>
-              {workouts[selectedDate] ? (
-                <>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                    <h2 style={{ ...styles.h2, marginBottom: 0, color: "#e53e3e" }}>{workouts[selectedDate].title}</h2>
-                    <span style={styles.tag(workouts[selectedDate].done ? "green" : "orange")}>{workouts[selectedDate].done ? "✓ Completado" : "Pendiente"}</span>
-                  </div>
-                  {workouts[selectedDate].exercises.map((ex, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 0", borderBottom: "1px solid #1a1a1a" }}>
-                      <span style={{ fontWeight: 800, fontSize: 14, color: "#e53e3e", minWidth: 24 }}>{String(i + 1).padStart(2, "0")}</span>
-                      <p style={{ fontSize: 16 }}>{ex}</p>
+              {myWorkouts.find(w => w.date === selectedDate) ? (() => {
+                const w = myWorkouts.find(ww => ww.date === selectedDate);
+                return (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                      <h2 style={{ ...styles.h2, marginBottom: 0, color: "#e53e3e" }}>{w.title}</h2>
+                      <span style={styles.tag(w.done ? "green" : "orange")}>{w.done ? "✓ Completado" : "Pendiente"}</span>
                     </div>
-                  ))}
-                  {!workouts[selectedDate].done && (
-                    <button style={{ ...styles.redBtn, marginTop: 20 }} onClick={() => setWorkouts(w => ({ ...w, [selectedDate]: { ...w[selectedDate], done: true } }))}>
-                      Marcar como completado
-                    </button>
-                  )}
-                </>
-              ) : <p style={{ color: "#555", fontStyle: "italic", textAlign: "center", padding: 24 }}>Sin entrenamiento programado para este día</p>}
+                    {w.exercises?.map((ex, i) => (
+                      <p key={i} style={{ color: "#bbb", fontSize: 15, padding: "10px 0", borderBottom: "1px solid #1a1a1a" }}>{String(i + 1).padStart(2, "0")}. {ex}</p>
+                    ))}
+                    {!w.done && <button style={{ ...styles.redBtn, marginTop: 16 }} onClick={() => markDone(w.id)}>Marcar como completado</button>}
+                  </>
+                );
+              })() : <p style={{ color: "#444", textAlign: "center", padding: 24 }}>Sin entrenamiento para este día.</p>}
             </div>
           </>
         )}
 
         {view === "horarios" && (
           <>
-            <h1 style={{ ...styles.h1, marginBottom: 8 }}>Agendar <span style={{ color: "#e53e3e" }}>Sesión</span></h1>
-            <p style={{ color: "#666", marginBottom: 24 }}>Elige tus horarios para la semana</p>
+            <h1 style={{ ...styles.h1, marginBottom: 24 }}>Agendar <span style={{ color: "#e53e3e" }}>Sesión</span></h1>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-              {schedule.map(s => {
-                const isMine = s.booked.includes(user.name);
-                const isFull = s.booked.length >= s.spots;
+              {schedules.map(s => {
+                const isMine = s.bookings?.some(b => b.athlete_id === user.id);
+                const isFull = (s.bookings?.length || 0) >= s.spots;
                 return (
                   <div key={s.id} style={{ ...styles.card, border: isMine ? "1px solid #e53e3e" : "1px solid #2a2a2a", background: isMine ? "#1a0a0a" : "#161616" }}>
-                    <p style={{ fontWeight: 800, fontSize: 20, textTransform: "uppercase" }}>{s.day}</p>
-                    <p style={{ color: "#e53e3e", fontSize: 32, fontWeight: 800, lineHeight: 1, marginBottom: 8 }}>{s.time}</p>
-                    <p style={{ color: "#666", fontSize: 13, marginBottom: 16 }}>{s.booked.length}/{s.spots} cupos</p>
-                    <button
-                      style={{ ...isMine ? styles.redBtn : styles.ghostBtn, width: "100%", fontSize: 12, padding: "10px" }}
-                      onClick={() => bookSlot(s.id)}
-                      disabled={!isMine && isFull}
-                    >
+                    <p style={{ fontWeight: 800, fontSize: 18, textTransform: "uppercase" }}>{s.day}</p>
+                    <p style={{ color: "#e53e3e", fontSize: 28, fontWeight: 800, lineHeight: 1, marginBottom: 8 }}>{s.time}</p>
+                    <p style={{ color: "#666", fontSize: 13, marginBottom: 16 }}>{s.bookings?.length || 0}/{s.spots} cupos</p>
+                    <button style={{ ...isMine ? styles.redBtn : styles.ghostBtn, width: "100%", fontSize: 12 }} onClick={() => bookSlot(s.id)} disabled={!isMine && isFull}>
                       {isMine ? "✓ Reservado — Cancelar" : isFull ? "Sin cupos" : "Reservar"}
                     </button>
                   </div>
@@ -475,27 +617,22 @@ export default function NSBApp() {
             <div style={styles.grid2}>
               <div style={styles.card}>
                 <p style={styles.h3}>Nuevo mensaje</p>
-                <textarea style={{ ...styles.input, height: 120, resize: "vertical", marginBottom: 12 }} placeholder="Escríbele a tu coach..." value={newComment} onChange={e => setNewComment(e.target.value)} />
-                <button style={styles.redBtn} onClick={sendComment}>Enviar</button>
+                <textarea style={{ ...styles.input, height: 120, resize: "vertical", marginBottom: 12 }} placeholder="Escríbele a tu coach..." value={newMsg} onChange={e => setNewMsg(e.target.value)} />
+                <button style={styles.redBtn} onClick={sendMessage}>Enviar</button>
               </div>
               <div style={styles.card}>
                 <p style={styles.h3}>Conversación</p>
                 <div style={{ maxHeight: 360, overflowY: "auto" }}>
-                  {myCommentsList.length === 0
-                    ? <p style={{ color: "#444", fontStyle: "italic" }}>Sin mensajes aún</p>
-                    : myCommentsList.slice().reverse().map(c => {
-                        const isMe = c.from === user.name;
-                        return (
-                          <div key={c.id} style={{ padding: "12px 0", borderBottom: "1px solid #1a1a1a" }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                              <span style={{ fontWeight: 700, fontSize: 12, color: isMe ? "#f97316" : "#e53e3e" }}>{c.from}</span>
-                              <span style={{ color: "#444", fontSize: 11 }}>{c.date}</span>
-                            </div>
-                            <p style={{ color: "#bbb", fontSize: 14 }}>{c.text}</p>
-                          </div>
-                        );
-                      })
-                  }
+                  {messages.length === 0 ? <p style={{ color: "#444" }}>Sin mensajes aún.</p> :
+                    messages.slice().reverse().map(m => (
+                      <div key={m.id} style={{ padding: "10px 0", borderBottom: "1px solid #1a1a1a" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                          <span style={{ fontWeight: 700, fontSize: 12, color: m.from_id === user.id ? "#f97316" : "#e53e3e" }}>{m.from?.name}</span>
+                          <span style={{ color: "#444", fontSize: 11 }}>{new Date(m.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <p style={{ color: "#bbb", fontSize: 14 }}>{m.text}</p>
+                      </div>
+                    ))}
                 </div>
               </div>
             </div>
