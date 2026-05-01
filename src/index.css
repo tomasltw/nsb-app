@@ -1,15 +1,14 @@
-* {
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap');
+
+*, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: 'Barlow Condensed', sans-serif !important;
 }
 
 body {
   background: #0a0a0a;
   color: #fff;
-}
-
-input, select, textarea, button {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: 'Barlow Condensed', sans-serif !important;
 }
