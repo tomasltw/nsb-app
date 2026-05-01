@@ -125,7 +125,7 @@ export default function App() {
   if (!user) return (
     <div style={{ minHeight:"100vh", background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px", fontFamily:F }}>
       <div style={{ textAlign:"center", marginBottom:24 }}>
-        <img src="/logo.png" alt="NSB" style={{ width:120, marginBottom:12 }} />
+        <img src="/logo.png" alt="NSB" style={{ width:180, marginBottom:12 }} />
         <p style={{ color:"#555", letterSpacing:"0.3em", fontSize:10, textTransform:"uppercase", fontFamily:F }}>Never Stop Building</p>
       </div>
       <div style={{ background:"#111", border:"none", borderRadius:16, padding:"28px 20px", width:"100%", maxWidth:380 }}>
@@ -149,7 +149,7 @@ export default function App() {
     return (
       <div style={base.app}>
         <div style={base.topBar}>
-          <img src="/logo.png" alt="NSB" style={{ height:26 }} />
+          <img src="/logo.png" alt="NSB" style={{ height:32 }} />
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:"#666", fontSize:13, fontFamily:F }}>{user.name}</span>
             <button style={{...base.ghostBtn, padding:"6px 12px", fontSize:11}} onClick={logout}>Salir</button>
