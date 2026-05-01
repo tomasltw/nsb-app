@@ -129,13 +129,13 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const [wForm, setWForm] = useState({ title:"", exercises:"", date:selDate, athlete_ids:[ath.id], comment:"" });
   const [tForm, setTForm] = useState({ amount:"", reason:"" });
   const [commentText, setCommentText] = useState("");
-  const [showCopyList, setShowCopyList] = useState(false);
 
   const aw = workouts.filter(w=>w.athlete_id===ath.id);
   const dayW = aw.filter(w=>w.date===selDate);
   const d = getDays(ath.expiry);
   const athHistory = tokenHistory.filter(th=>th.athlete_id===ath.id);
   const typeColor = ath.type==="Online"?RED:ath.type==="Presencial"?"#f97316":"#a855f7";
+  const otherAthletes = athletes.filter(a=>a.id!==ath.id);
 
   const createWorkout = async () => {
     if (!wForm.title.trim()) return;
@@ -149,7 +149,9 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
         await supabase.from("token_history").insert({ athlete_id:aid, amount:-1, reason:`Planificación: ${wForm.title} (${wForm.date})` });
       }
     }
-    setShowWF(false); setWForm({ title:"", exercises:"", date:selDate, athlete_ids:[ath.id], comment:"" }); onRefresh();
+    setShowWF(false);
+    setWForm({ title:"", exercises:"", date:selDate, athlete_ids:[ath.id], comment:"" });
+    onRefresh();
   };
 
   const adjustTokens = async () => {
@@ -174,6 +176,8 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     setWForm({...wForm, athlete_ids:ids});
   };
 
+  const selectedCount = wForm.athlete_ids.filter(id=>id!==ath.id).length;
+
   return (
     <div style={base.app}>
       <div style={base.topBar}>
@@ -197,6 +201,7 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           <div style={base.statCard("#22c55e")}><p style={base.h3}>Hechos</p><p className="p-green" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{aw.filter(w=>w.done).length}<span style={{ fontSize:13,color:"#666" }}>/{aw.length}</span></p></div>
         </div>
 
+        {/* Tokens */}
         <div style={base.card}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showTF?12:0 }}>
             <p style={base.h3}>Tokens</p>
@@ -217,11 +222,15 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           ))}
         </div>
 
+        {/* Calendario */}
         <MonthCalendar workouts={aw} selectedDate={selDate} onDayClick={(key)=>{ setSelDate(key); setWForm(f=>({...f,date:key})); }} />
 
+        {/* Día */}
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
           <p style={{ fontWeight:700,fontSize:14,color:"#999",fontFamily:F }}>{selDate} · {getWeekdayFromDate(selDate)}</p>
-          <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>{ setWForm({title:"",exercises:"",date:selDate,athlete_ids:[ath.id],comment:""}); setShowWF(!showWF); }}>+ Agregar</button>
+          <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>{ setWForm({title:"",exercises:"",date:selDate,athlete_ids:[ath.id],comment:""}); setShowWF(!showWF); }}>
+            {showWF?"Cerrar":"+ Agregar"}
+          </button>
         </div>
 
         {showWF && <div style={base.card}>
@@ -234,49 +243,40 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           <textarea style={{...base.input,height:140,resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"Press de banca 4x8\nRemo con barra 4x8\nPress militar 3x10"} />
           <label style={base.label}>Nota para el atleta</label>
           <input style={base.input} value={wForm.comment} onChange={e=>setWForm({...wForm,comment:e.target.value})} placeholder="Ej: Enfocarse en técnica, descanso 90s" />
-          <div style={{ marginBottom:12 }}>
-            <button style={{...base.ghostBtn,width:"100%",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}} onClick={()=>setShowCopyList(!showCopyList)}>
-              <span>Copiar planificación a otros atletas</span>
-              <span style={{ color:wForm.athlete_ids.length>1?RED:"#555" }}>
-                {wForm.athlete_ids.length>1?`+${wForm.athlete_ids.length-1} seleccionados`:showCopyList?"▲":"▼"}
-              </span>
-            </button>
-            {showCopyList && <div style={{ background:"#0d0d0d",borderRadius:10,padding:"8px 12px" }}>
-              {NSB_PLANS.map(plan=>{
-                const planAthletes = athletes.filter(a=>a.id!==ath.id&&a.plan===plan);
-                if (planAthletes.length===0) return null;
+
+          {/* Lista de atletas SIEMPRE VISIBLE */}
+          {otherAthletes.length > 0 && <>
+            <label style={base.label}>
+              Copiar también a{selectedCount > 0 && <span style={{ color:RED,marginLeft:6 }}>({selectedCount} seleccionados)</span>}
+            </label>
+            <div style={{ background:"#0d0d0d",borderRadius:10,padding:"4px 12px",marginBottom:12 }}>
+              {otherAthletes.map(a=>{
+                const selected = wForm.athlete_ids.includes(a.id);
+                const typeColor = a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
                 return (
-                  <div key={plan} style={{ marginBottom:12 }}>
-                    <p style={{ fontSize:11,fontWeight:700,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:F,marginBottom:6 }}>{plan}</p>
-                    {planAthletes.map(a=>(
-                      <div key={a.id} onClick={()=>toggleAthlete(a.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 0",cursor:"pointer",borderBottom:"1px solid #1a1a1a" }}>
-                        <div style={{ width:22,height:22,borderRadius:5,border:`2px solid ${wForm.athlete_ids.includes(a.id)?RED:"#444"}`,background:wForm.athlete_ids.includes(a.id)?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                          {wForm.athlete_ids.includes(a.id)&&<span style={{ color:"#fff",fontSize:13 }}>✓</span>}
-                        </div>
-                        <div>
-                          <p style={{ fontFamily:F,fontSize:15,fontWeight:600 }}>{a.name}</p>
-                          <p style={{ fontFamily:F,fontSize:11,color:"#555" }}>{a.type} · {a.tokens||0} tokens</p>
-                        </div>
-                      </div>
-                    ))}
+                  <div key={a.id} onClick={()=>toggleAthlete(a.id)} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 0",cursor:"pointer",borderBottom:"1px solid #1a1a1a" }}>
+                    <div style={{ width:24,height:24,borderRadius:6,border:`2px solid ${selected?RED:"#444"}`,background:selected?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.15s" }}>
+                      {selected&&<span style={{ color:"#fff",fontSize:14,fontWeight:800 }}>✓</span>}
+                    </div>
+                    <div style={{ width:34,height:34,borderRadius:"50%",background:`${typeColor}22`,border:`2px solid ${typeColor}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      <span style={{ color:typeColor,fontWeight:800,fontSize:15,fontFamily:F }}>{a.name.charAt(0)}</span>
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <p style={{ fontFamily:F,fontSize:15,fontWeight:700,color:selected?"#fff":"#ccc" }}>{a.name}</p>
+                      <p style={{ fontFamily:F,fontSize:11,color:"#555" }}>{a.plan||"Sin plan"} · {a.type} · {a.tokens||0} tok</p>
+                    </div>
+                    {selected && <span className="p-red" style={{ fontSize:18 }}>✓</span>}
                   </div>
                 );
               })}
-              {athletes.filter(a=>a.id!==ath.id&&(!a.plan||!NSB_PLANS.includes(a.plan))).length>0 && <>
-                <p style={{ fontSize:11,fontWeight:700,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:F,marginBottom:6 }}>Sin plan</p>
-                {athletes.filter(a=>a.id!==ath.id&&(!a.plan||!NSB_PLANS.includes(a.plan))).map(a=>(
-                  <div key={a.id} onClick={()=>toggleAthlete(a.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 0",cursor:"pointer",borderBottom:"1px solid #1a1a1a" }}>
-                    <div style={{ width:22,height:22,borderRadius:5,border:`2px solid ${wForm.athlete_ids.includes(a.id)?RED:"#444"}`,background:wForm.athlete_ids.includes(a.id)?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                      {wForm.athlete_ids.includes(a.id)&&<span style={{ color:"#fff",fontSize:13 }}>✓</span>}
-                    </div>
-                    <p style={{ fontFamily:F,fontSize:15 }}>{a.name} <span style={{ color:"#555",fontSize:11 }}>({a.type})</span></p>
-                  </div>
-                ))}
-              </>}
-            </div>}
-          </div>
+            </div>
+          </>}
+
           <button style={base.redBtn} onClick={createWorkout}>
-            Crear{wForm.athlete_ids.length>1?` para ${wForm.athlete_ids.length} atletas`:""}
+            {wForm.athlete_ids.length > 1
+              ? `Crear para ${wForm.athlete_ids.length} atletas`
+              : "Crear entrenamiento"
+            }
           </button>
         </div>}
 
@@ -398,9 +398,7 @@ export default function App() {
   const [aForm, setAForm] = useState({ name:"",email:"",password:"",plan:NSB_PLANS[0],expiry:"",payment_date:"",type:"Online",sessions_per_week:3 });
   const [showSF, setShowSF] = useState(false);
   const [sForm, setSForm] = useState({ day:"Lunes",time:"",spots:4 });
-  // ── FIX: estado separado para presencial ──
   const [presDate, setPresDate] = useState(new Date().toISOString().split("T")[0]);
-  // ── estado atleta ──
   const [selDate, setSelDate] = useState(new Date().toISOString().split("T")[0]);
   const [athView, setAthView] = useState("plan");
 
@@ -473,7 +471,6 @@ export default function App() {
     </div>
   );
 
-  // ── COACH ─────────────────────────────────────────────────
   if (user.role==="coach") {
     if (selectedAthlete) return <AthleteProfile ath={selectedAthlete} workouts={workouts} athletes={athletes} tokenHistory={tokenHistory} onBack={()=>setSelectedAthlete(null)} onRefresh={refresh} user={user} />;
     if (selectedPlan) return <PlanView plan={selectedPlan} athletes={athletes} onSelectAthlete={(a)=>{ setSelectedAthlete(a); setSelectedPlan(null); }} onBack={()=>setSelectedPlan(null)} />;
@@ -486,8 +483,6 @@ export default function App() {
     const cl = { home:"Inicio",online:"Online",presencial:"Presencial",mensajes:"Mensajes",info:"Info" };
     const activePlans = NSB_PLANS.filter(p=>athletes.some(a=>a.plan===p&&(a.type==="Online"||a.type==="Mixto")));
     const noPlanOnline = onlineAthletes.filter(a=>!NSB_PLANS.includes(a.plan));
-
-    // ── FIX: usar presDate para presencial ──
     const presWeekday = getWeekdayFromDate(presDate);
     const filteredSchedules = schedules.filter(sch=>sch.day===presWeekday);
 
@@ -557,8 +552,8 @@ export default function App() {
                     <p style={{ color:"#666",fontSize:13,fontFamily:F }}>{planAthletes.length} atleta{planAthletes.length!==1?"s":""}</p>
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                    <div style={{ display:"flex",flexDirection:"column",gap:2 }}>
-                      {planAthletes.slice(0,3).map(a=><div key={a.id} style={{ width:8,height:8,borderRadius:"50%",background:RED }}/>)}
+                    <div style={{ display:"flex",gap:3 }}>
+                      {planAthletes.slice(0,4).map(a=><div key={a.id} style={{ width:8,height:8,borderRadius:"50%",background:RED }}/>)}
                     </div>
                     <span style={{ color:"#555",fontSize:20 }}>›</span>
                   </div>
@@ -599,10 +594,7 @@ export default function App() {
               </select>
               <button style={base.redBtn} onClick={createAthlete}>Crear atleta</button>
             </div>}
-
-            {/* ── FIX: usar presDate y setPresDate ── */}
             <MonthCalendar workouts={[]} selectedDate={presDate} onDayClick={setPresDate} />
-
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
               <div>
                 <p style={{ fontWeight:800,fontSize:16,color:"#fff",fontFamily:F }}>{presWeekday}</p>
@@ -610,7 +602,6 @@ export default function App() {
               </div>
               <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>setShowSF(!showSF)}>+ Horario</button>
             </div>
-
             {showSF && <div style={base.card}>
               <h2 style={base.h2}>Nuevo horario</h2>
               <label style={base.label}>Día</label>
@@ -621,7 +612,6 @@ export default function App() {
               <input style={base.input} type="number" value={sForm.spots} onChange={e=>setSForm({...sForm,spots:e.target.value})} />
               <button style={base.redBtn} onClick={createSchedule}>Crear horario</button>
             </div>}
-
             {filteredSchedules.length===0
               ? <div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin horarios para el {presWeekday}.</p></div>
               : filteredSchedules.map(sch=>(
@@ -635,7 +625,6 @@ export default function App() {
                 </div>
               ))
             }
-
             <div style={{ marginTop:16 }}>
               <h2 style={base.h2}>Atletas Presencial</h2>
               {presAthletes.length===0
@@ -703,7 +692,7 @@ export default function App() {
     );
   }
 
-  // ── ATLETA ────────────────────────────────────────────────
+  // ATLETA
   const daysLeft = getDays(user.expiry);
   const isOnline = user.type==="Online";
   const isPres = user.type==="Presencial";
