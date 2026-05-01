@@ -135,7 +135,7 @@ export default function NSBApp() {
   const s = {
     app: { minHeight: "100vh", background: "#0a0a0a", color: "#fff", fontFamily: "'Barlow Condensed', sans-serif", paddingBottom: 80 },
     login: { minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 20 },
-    loginBox: { background: "#111", border: "1px solid #222", borderRadius: 16, padding: "24px 20px", width: "100%", maxWidth: 400 },
+    loginBox: { background: "#111", border: "1px solid #222", borderRadius: 16, padding: "32px 24px", width: "100%", maxWidth: 400 },
     h1: { fontSize: 28, fontWeight: 800, textTransform: "uppercase", letterSpacing: "0.02em", marginBottom: 4 },
     h2: { fontSize: 20, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 },
     h3: { fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: "#666", marginBottom: 6 },
