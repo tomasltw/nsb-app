@@ -10,5 +10,13 @@
 body {
   background: #0a0a0a;
   color: #fff;
+}
+
+input, select, textarea, button {
+  font-family: 'Barlow Condensed', sans-serif !important;
+  font-size: 16px !important;
+}
+
+input::placeholder {
   font-family: 'Barlow Condensed', sans-serif !important;
 }
