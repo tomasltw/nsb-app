@@ -124,12 +124,12 @@ export default function App() {
 
   // LOGIN
   if (!user) return (
-    <div style={{ minHeight:"100vh", background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", paddingTop:20, padding:"40px 20px 20px", fontFamily:F }}>
-      <div style={{ textAlign:"center", marginBottom:8 }}>
-        <img src="/logo.png" alt="NSB" style={{ width:180, marginBottom:8 }} />
-        <p style={{ color:"#555", letterSpacing:"0.3em", fontSize:10, textTransform:"uppercase", fontFamily:F }}>Never Stop Building</p>
+    <div style={{ minHeight:"100vh", background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px", fontFamily:F }}>
+      <div style={{ textAlign:"center", marginBottom:12 }}>
+        <img src="/logo.png" alt="NSB" style={{ width:260, marginBottom:6 }} />
+        <p style={{ color:"#555", letterSpacing:"0.3em", fontSize:13, textTransform:"uppercase", fontFamily:F }}>Never Stop Building</p>
       </div>
-      <div style={{ background:"#0d0d0d", border:"none", borderRadius:16, padding:"24px 20px", width:"100%", maxWidth:380 }}>
+      <div style={{ background:"#0d0d0d", borderRadius:16, padding:"24px 20px", width:"100%", maxWidth:380 }}>
         <h2 style={{ fontSize:22, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:20, color:"#fff", fontFamily:F }}>Iniciar Sesión</h2>
         <label style={base.label}>Email</label>
         <input style={base.input} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@email.com" onKeyDown={e=>e.key==="Enter"&&login()} />
@@ -137,7 +137,7 @@ export default function App() {
         <input style={{...base.input, marginBottom:20}} type="password" value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&login()} />
         {err && <p style={{ color:RED, fontSize:13, marginBottom:12, fontFamily:F }}>{err}</p>}
         <button style={base.redBtn} onClick={login} disabled={loading}>{loading?"Entrando...":"Entrar"}</button>
-        <p style={{ color:"#444", fontSize:12, textAlign:"center", marginTop:16, fontStyle:"italic", fontFamily:F }}>tus metas merecen un plan real.</p>
+        <p style={{ color:"#555", fontSize:16, textAlign:"center", marginTop:16, fontStyle:"italic", fontFamily:F }}>tus metas merecen un plan real.</p>
       </div>
     </div>
   );
