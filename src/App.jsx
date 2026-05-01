@@ -15,6 +15,8 @@ const getDays = (d) => {
 };
 
 const DAYS = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const WEEKDAYS = ["D","L","M","M","J","V","S"];
 
 const tag = (c) => ({
   display:"inline-block", padding:"4px 10px", borderRadius:6, fontSize:11,
@@ -42,6 +44,71 @@ const base = {
   navItem:(active)=>({ flex:1, display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 0 12px", cursor:"pointer", color:active?RED:"#555", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", border:"none", background:"transparent", fontFamily:F }),
 };
 
+// CALENDARIO MENSUAL
+function MonthCalendar({ workouts, onDayClick, selectedDate }) {
+  const today = new Date();
+  const [calDate, setCalDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const year = calDate.getFullYear();
+  const month = calDate.getMonth();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const prevMonth = () => setCalDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCalDate(new Date(year, month + 1, 1));
+
+  const getWorkoutsForDay = (day) => {
+    const key = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+    return workouts.filter(w => w.date === key);
+  };
+
+  const todayKey = today.toISOString().split("T")[0];
+
+  return (
+    <div style={{ background:"#161616", border:"1px solid #222", borderRadius:16, padding:16, marginBottom:12 }}>
+      {/* Header */}
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+        <button onClick={prevMonth} style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer", fontFamily:F }}>‹</button>
+        <div style={{ textAlign:"center" }}>
+          <p style={{ fontWeight:800, fontSize:20, textTransform:"uppercase", letterSpacing:"0.05em", fontFamily:F }}>{MONTHS[month]}</p>
+          <p style={{ color:"#555", fontSize:13, fontFamily:F }}>{year}</p>
+        </div>
+        <button onClick={nextMonth} style={{ background:"none", border:"none", color:"#fff", fontSize:22, cursor:"pointer", fontFamily:F }}>›</button>
+      </div>
+
+      {/* Días de la semana */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", marginBottom:8 }}>
+        {WEEKDAYS.map((d,i) => (
+          <div key={i} style={{ textAlign:"center", fontSize:11, fontWeight:700, color:"#555", fontFamily:F, padding:"4px 0" }}>{d}</div>
+        ))}
+      </div>
+
+      {/* Días del mes */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:"2px" }}>
+        {Array.from({length: firstDay}).map((_,i) => <div key={`e${i}`} />)}
+        {Array.from({length: daysInMonth}).map((_,i) => {
+          const day = i + 1;
+          const key = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+          const ws = getWorkoutsForDay(day);
+          const isToday = key === todayKey;
+          const isSelected = key === selectedDate;
+
+          return (
+            <div key={day} onClick={() => onDayClick(key)} style={{ textAlign:"center", padding:"6px 2px", cursor:"pointer", borderRadius:10, background: isSelected ? RED : isToday ? `${RED}22` : "transparent" }}>
+              <p style={{ fontSize:16, fontWeight: isToday||isSelected ? 800 : 400, color: isSelected ? "#fff" : isToday ? RED : "#fff", fontFamily:F, lineHeight:1, marginBottom:3 }}>{day}</p>
+              <div style={{ display:"flex", justifyContent:"center", gap:2, minHeight:6 }}>
+                {ws.slice(0,2).map((w,wi) => (
+                  <div key={wi} style={{ width:6, height:6, borderRadius:"50%", background: w.done ? "#22c55e" : "#f97316" }} />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
@@ -62,6 +129,7 @@ export default function App() {
   const [aForm, setAForm] = useState({ name:"", email:"", password:"", plan:"", expiry:"", type:"Online" });
   const [sForm, setSForm] = useState({ day:"Lunes", time:"", spots:4 });
   const [wForm, setWForm] = useState({ title:"", exercises:"", date:"", athlete_id:"" });
+  const [selectedAthlete, setSelectedAthlete] = useState(null);
 
   const login = async () => {
     setLoading(true); setErr("");
@@ -85,13 +153,13 @@ export default function App() {
     }
   };
 
-  const logout = () => { setUser(null); setEmail(""); setPw(""); setView("home"); };
+  const logout = () => { setUser(null); setEmail(""); setPw(""); setView("home"); setSelectedAthlete(null); };
 
   const createAthlete = async () => {
     await supabase.from("users").insert({...aForm, role:"athlete"});
     setShowAF(false); setAForm({ name:"", email:"", password:"", plan:"", expiry:"", type:"Online" }); load(user);
   };
-  const delAthlete = async (id) => { await supabase.from("users").delete().eq("id",id); load(user); };
+  const delAthlete = async (id) => { await supabase.from("users").delete().eq("id",id); setSelectedAthlete(null); load(user); };
   const createSchedule = async () => {
     await supabase.from("schedules").insert({...sForm, spots:parseInt(sForm.spots)});
     setShowSF(false); setSForm({ day:"Lunes", time:"", spots:4 }); load(user);
@@ -99,7 +167,7 @@ export default function App() {
   const delSchedule = async (id) => { await supabase.from("schedules").delete().eq("id",id); load(user); };
   const createWorkout = async () => {
     await supabase.from("workouts").insert({...wForm, exercises: wForm.exercises.split("\n").filter(e=>e.trim())});
-    setShowWF(false); setWForm({ title:"", exercises:"", date:"", athlete_id:"" }); load(user);
+    setShowWF(false); setWForm({ title:"", exercises:"", date: selDate, athlete_id: selectedAthlete?.id || "" }); load(user);
   };
   const bookSlot = async (sid) => {
     const sch = schedules.find(s=>s.id===sid);
@@ -117,10 +185,6 @@ export default function App() {
     await supabase.from("messages").insert({ from_id:user.id, to_id:toId, text:newMsg });
     setNewMsg(""); load(user);
   };
-
-  const weekDates = Array.from({length:7},(_,i)=>{
-    const d=new Date(); d.setDate(d.getDate()-d.getDay()+i+1); return d;
-  });
 
   // LOGIN
   if (!user) return (
@@ -144,9 +208,97 @@ export default function App() {
 
   // COACH
   if (user.role==="coach") {
-    const cv = ["home","atletas","plan","horarios","mensajes"];
-    const ci = { home:"⚡", atletas:"👥", plan:"📋", horarios:"📅", mensajes:"💬" };
-    const cl = { home:"Inicio", atletas:"Atletas", plan:"Plan", horarios:"Horarios", mensajes:"Mensajes" };
+    const cv = ["home","atletas","horarios","mensajes"];
+    const ci = { home:"⚡", atletas:"👥", horarios:"📅", mensajes:"💬" };
+    const cl = { home:"Inicio", atletas:"Atletas", horarios:"Horarios", mensajes:"Mensajes" };
+
+    // PERFIL DE ATLETA
+    if (selectedAthlete) {
+      const athleteWorkouts = workouts.filter(w => w.athlete_id === selectedAthlete.id);
+      const dayWorkouts = athleteWorkouts.filter(w => w.date === selDate);
+      const d = getDays(selectedAthlete.expiry);
+
+      return (
+        <div style={base.app}>
+          <div style={base.topBar}>
+            <button onClick={() => setSelectedAthlete(null)} style={{ background:"none", border:"none", color:RED, fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:F, display:"flex", alignItems:"center", gap:6 }}>
+              ← Atletas
+            </button>
+            <span style={{ color:"#666", fontSize:13, fontFamily:F }}>{user.name}</span>
+          </div>
+          <div style={base.main}>
+            {/* Header atleta */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
+              <div>
+                <h1 style={{...base.h1, marginBottom:4}}>{selectedAthlete.name}</h1>
+                <span style={tag("orange")}>{selectedAthlete.type}</span>
+              </div>
+              <span style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
+            </div>
+
+            {/* Stats */}
+            <div style={base.grid2}>
+              <div style={base.statCard(RED)}><p style={base.h3}>Plan</p><p style={{ fontWeight:700, fontSize:14, fontFamily:F }}>{selectedAthlete.plan||"Sin plan"}</p></div>
+              <div style={base.statCard("#22c55e")}><p style={base.h3}>Completados</p><p style={{ fontSize:28, fontWeight:800, color:"#22c55e", lineHeight:1, fontFamily:F }}>{athleteWorkouts.filter(w=>w.done).length}<span style={{ fontSize:13, color:"#666" }}>/{athleteWorkouts.length}</span></p></div>
+            </div>
+
+            {/* Calendario */}
+            <MonthCalendar
+              workouts={athleteWorkouts}
+              selectedDate={selDate}
+              onDayClick={(key) => {
+                setSelDate(key);
+                setWForm(f => ({...f, date: key, athlete_id: selectedAthlete.id}));
+              }}
+            />
+
+            {/* Entrenamiento del día seleccionado */}
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+              <p style={{ fontWeight:700, fontSize:15, color:"#999", fontFamily:F }}>{selDate}</p>
+              <button style={{...base.redBtn, width:"auto", padding:"8px 14px", fontSize:12}} onClick={() => { setWForm({ title:"", exercises:"", date:selDate, athlete_id:selectedAthlete.id }); setShowWF(!showWF); }}>+ Agregar</button>
+            </div>
+
+            {showWF && <div style={base.card}>
+              <h2 style={base.h2}>Nuevo entrenamiento</h2>
+              <label style={base.label}>Fecha</label>
+              <input style={base.input} type="date" value={wForm.date} onChange={e=>setWForm({...wForm,date:e.target.value})} />
+              <label style={base.label}>Título</label>
+              <input style={base.input} value={wForm.title} onChange={e=>setWForm({...wForm,title:e.target.value})} placeholder="Ej: Upper Body Strength" />
+              <label style={base.label}>Ejercicios (uno por línea)</label>
+              <textarea style={{...base.input, height:120, resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"Press de banca 4x8\nRemo con barra 4x8"} />
+              <button style={base.redBtn} onClick={createWorkout}>Crear entrenamiento</button>
+            </div>}
+
+            <div style={base.card}>
+              {dayWorkouts.length === 0
+                ? <p style={{ color:"#444", textAlign:"center", padding:16, fontFamily:F }}>Sin entrenamiento para este día.</p>
+                : dayWorkouts.map(w => (
+                  <div key={w.id}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
+                      <p style={{ fontWeight:800, fontSize:16, color:RED, textTransform:"uppercase", fontFamily:F }}>{w.title}</p>
+                      <span style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
+                    </div>
+                    {w.exercises?.map((ex,i) => <p key={i} style={{ color:"#bbb", fontSize:14, padding:"8px 0", borderBottom:"1px solid #1a1a1a", fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
+                  </div>
+                ))
+              }
+            </div>
+
+            {/* Info atleta */}
+            <div style={base.card}>
+              <p style={base.h3}>Información</p>
+              <div style={base.grid2}>
+                {[["Email",selectedAthlete.email],["Clave",selectedAthlete.password],["Vence",selectedAthlete.expiry||"—"],["Tipo",selectedAthlete.type]].map(([l,v])=>(
+                  <div key={l} style={{ background:"#0d0d0d", borderRadius:8, padding:10 }}><p style={base.h3}>{l}</p><p style={{ fontWeight:600, fontSize:13, fontFamily:F }}>{v}</p></div>
+                ))}
+              </div>
+              <button style={{...base.ghostBtn, marginTop:12, width:"100%", fontSize:12, color:RED, borderColor:`${RED}44`}} onClick={()=>delAthlete(selectedAthlete.id)}>Eliminar atleta</button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div style={base.app}>
         <div style={base.topBar}>
@@ -171,7 +323,7 @@ export default function App() {
               <h2 style={base.h2}>Atletas</h2>
               {athletes.length===0 ? <p style={{ color:"#444", fontFamily:F }}>Sin atletas aún.</p> : athletes.map(a=>{
                 const d=getDays(a.expiry);
-                return <div key={a.id} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid #1a1a1a" }}>
+                return <div key={a.id} onClick={() => { setSelectedAthlete(a); setView("atletas"); }} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"12px 0", borderBottom:"1px solid #1a1a1a", cursor:"pointer" }}>
                   <div><p style={{ fontWeight:700, fontSize:16, fontFamily:F }}>{a.name}</p><p style={{ color:"#666", fontSize:13, fontFamily:F }}>{a.type}</p></div>
                   <span style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
                 </div>;
@@ -197,52 +349,28 @@ export default function App() {
               </select>
               <button style={base.redBtn} onClick={createAthlete}>Crear atleta</button>
             </div>}
+
+            {/* Lista compacta de atletas */}
             {athletes.map(a=>{
               const d=getDays(a.expiry);
-              return <div key={a.id} style={base.card}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
-                  <div><p style={{ fontWeight:800, fontSize:18, fontFamily:F }}>{a.name}</p><span style={tag("orange")}>{a.type}</span></div>
-                  <span style={tag(d<15?"red":d<30?"orange":"green")}>{d} días</span>
+              return (
+                <div key={a.id} onClick={() => setSelectedAthlete(a)} style={{ ...base.card, cursor:"pointer", display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+                    <div style={{ width:42, height:42, borderRadius:"50%", background:`${RED}22`, border:`2px solid ${RED}44`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                      <span style={{ color:RED, fontWeight:800, fontSize:16, fontFamily:F }}>{a.name.charAt(0)}</span>
+                    </div>
+                    <div>
+                      <p style={{ fontWeight:800, fontSize:16, fontFamily:F }}>{a.name}</p>
+                      <p style={{ color:"#666", fontSize:12, fontFamily:F }}>{a.plan||"Sin plan"} · {a.type}</p>
+                    </div>
+                  </div>
+                  <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                    <span style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
+                    <span style={{ color:"#555", fontSize:18 }}>›</span>
+                  </div>
                 </div>
-                <div style={base.grid2}>
-                  {[["Plan",a.plan||"Sin plan"],["Vence",a.expiry||"—"],["Email",a.email],["Clave",a.password]].map(([l,v])=>(
-                    <div key={l} style={{ background:"#0d0d0d", borderRadius:8, padding:10 }}><p style={base.h3}>{l}</p><p style={{ fontWeight:600, fontSize:13, fontFamily:F }}>{v}</p></div>
-                  ))}
-                </div>
-                <button style={{...base.ghostBtn, marginTop:12, width:"100%", fontSize:12, color:RED, borderColor:`${RED}44`}} onClick={()=>delAthlete(a.id)}>Eliminar atleta</button>
-              </div>;
+              );
             })}
-          </>}
-
-          {view==="plan" && <>
-            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-              <h1 style={{...base.h1, marginBottom:0}}>Planificación</h1>
-              <button style={{...base.redBtn, width:"auto", padding:"10px 16px", fontSize:13}} onClick={()=>setShowWF(!showWF)}>+ Agregar</button>
-            </div>
-            {showWF && <div style={base.card}>
-              <h2 style={base.h2}>Nuevo entrenamiento</h2>
-              <label style={base.label}>Atleta</label>
-              <select style={base.input} value={wForm.athlete_id} onChange={e=>setWForm({...wForm,athlete_id:e.target.value})}>
-                <option value="">Seleccionar atleta</option>
-                {athletes.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-              <label style={base.label}>Fecha</label>
-              <input style={base.input} type="date" value={wForm.date} onChange={e=>setWForm({...wForm,date:e.target.value})} />
-              <label style={base.label}>Título</label>
-              <input style={base.input} value={wForm.title} onChange={e=>setWForm({...wForm,title:e.target.value})} placeholder="Ej: Upper Body Strength" />
-              <label style={base.label}>Ejercicios (uno por línea)</label>
-              <textarea style={{...base.input, height:120, resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"Press de banca 4x8\nRemo con barra 4x8"} />
-              <button style={base.redBtn} onClick={createWorkout}>Crear entrenamiento</button>
-            </div>}
-            {workouts.length===0 ? <div style={base.card}><p style={{ color:"#444", fontFamily:F }}>Sin entrenamientos aún.</p></div> : workouts.map(w=>(
-              <div key={w.id} style={base.card}>
-                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:10 }}>
-                  <div><p style={{ fontWeight:800, fontSize:16, color:RED, textTransform:"uppercase", fontFamily:F }}>{w.title}</p><p style={{ color:"#666", fontSize:13, fontFamily:F }}>{w.users?.name} · {w.date}</p></div>
-                  <span style={tag(w.done?"green":"orange")}>{w.done?"✓":"Pend."}</span>
-                </div>
-                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb", fontSize:14, padding:"6px 0", borderBottom:"1px solid #1a1a1a", fontFamily:F }}>· {ex}</p>)}
-              </div>
-            ))}
           </>}
 
           {view==="horarios" && <>
@@ -299,7 +427,7 @@ export default function App() {
         </div>
         <div style={base.bottomNav}>
           {cv.map(v=>(
-            <button key={v} style={base.navItem(view===v)} onClick={()=>setView(v)}>
+            <button key={v} style={base.navItem(view===v)} onClick={()=>{ setView(v); setSelectedAthlete(null); }}>
               <span style={{ fontSize:20, marginBottom:2 }}>{ci[v]}</span>{cl[v]}
             </button>
           ))}
@@ -310,7 +438,7 @@ export default function App() {
 
   // ATLETA
   const daysLeft = getDays(user.expiry);
-  const todayW = workouts.find(w=>w.date===selDate);
+  const dayWorkouts = workouts.filter(w => w.date === selDate);
   const av = ["home","plan","agendar","mensajes"];
   const ai = { home:"🏠", plan:"📋", agendar:"📅", mensajes:"💬" };
   const al = { home:"Inicio", plan:"Mi Plan", agendar:"Agendar", mensajes:"Mensajes" };
@@ -339,43 +467,40 @@ export default function App() {
           </div>
           <div style={base.card}>
             <h2 style={base.h2}>Entrenamiento de hoy</h2>
-            {todayW ? <>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
-                <p style={{ fontWeight:800, fontSize:16, color:RED, textTransform:"uppercase", fontFamily:F }}>{todayW.title}</p>
-                <span style={tag(todayW.done?"green":"orange")}>{todayW.done?"✓":"Pend."}</span>
-              </div>
-              {todayW.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb", fontSize:15, padding:"8px 0", borderBottom:"1px solid #1a1a1a", fontFamily:F }}>{i+1}. {ex}</p>)}
-              {!todayW.done && <button style={{...base.redBtn, marginTop:14}} onClick={()=>markDone(todayW.id)}>Marcar completado ✓</button>}
+            {dayWorkouts.length > 0 ? <>
+              {dayWorkouts.map(w => (
+                <div key={w.id}>
+                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                    <p style={{ fontWeight:800, fontSize:16, color:RED, textTransform:"uppercase", fontFamily:F }}>{w.title}</p>
+                    <span style={tag(w.done?"green":"orange")}>{w.done?"✓":"Pend."}</span>
+                  </div>
+                  {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb", fontSize:15, padding:"8px 0", borderBottom:"1px solid #1a1a1a", fontFamily:F }}>{i+1}. {ex}</p>)}
+                  {!w.done && <button style={{...base.redBtn, marginTop:14}} onClick={()=>markDone(w.id)}>Marcar completado ✓</button>}
+                </div>
+              ))}
             </> : <p style={{ color:"#444", fontFamily:F }}>Sin entrenamiento para hoy.</p>}
           </div>
         </>}
 
         {view==="plan" && <>
           <h1 style={{...base.h1, marginBottom:16}}>Mi Planificación</h1>
-          <div style={{ display:"flex", gap:8, overflowX:"auto", paddingBottom:8, marginBottom:16 }}>
-            {weekDates.map((d,i)=>{
-              const key=d.toISOString().split("T")[0];
-              const w=workouts.find(ww=>ww.date===key);
-              const isToday=key===new Date().toISOString().split("T")[0];
-              return <div key={key} onClick={()=>setSelDate(key)} style={{ minWidth:52, background:selDate===key?"#1a0505":"#161616", border:selDate===key?`1px solid ${RED}`:isToday?`1px solid ${RED}44`:"1px solid #222", borderRadius:12, padding:"10px 6px", textAlign:"center", cursor:"pointer" }}>
-                <p style={{ color:"#666", fontSize:10, textTransform:"uppercase", fontFamily:F }}>{"LunMarMiéJueViéSábDom".slice(i*3,i*3+3)}</p>
-                <p style={{ fontWeight:800, fontSize:20, color:isToday?RED:"#fff", fontFamily:F }}>{d.getDate()}</p>
-                <div style={{ width:8, height:8, borderRadius:"50%", background:!w?"#333":w.done?"#22c55e":"#f97316", margin:"4px auto 0" }} />
-              </div>;
-            })}
-          </div>
+          <MonthCalendar
+            workouts={workouts}
+            selectedDate={selDate}
+            onDayClick={(key) => setSelDate(key)}
+          />
           <div style={base.card}>
-            {workouts.find(w=>w.date===selDate) ? (()=>{
-              const w=workouts.find(ww=>ww.date===selDate);
-              return <>
+            <p style={{ fontWeight:700, fontSize:14, color:"#999", marginBottom:12, fontFamily:F }}>{selDate}</p>
+            {dayWorkouts.length > 0 ? dayWorkouts.map(w => (
+              <div key={w.id}>
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
                   <p style={{ fontWeight:800, fontSize:18, color:RED, textTransform:"uppercase", fontFamily:F }}>{w.title}</p>
                   <span style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
                 </div>
                 {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb", fontSize:15, padding:"10px 0", borderBottom:"1px solid #1a1a1a", fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
                 {!w.done && <button style={{...base.redBtn, marginTop:14}} onClick={()=>markDone(w.id)}>Marcar completado ✓</button>}
-              </>;
-            })() : <p style={{ color:"#444", textAlign:"center", padding:20, fontFamily:F }}>Sin entrenamiento para este día.</p>}
+              </div>
+            )) : <p style={{ color:"#444", textAlign:"center", padding:20, fontFamily:F }}>Sin entrenamiento para este día.</p>}
           </div>
         </>}
 
