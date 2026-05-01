@@ -25,7 +25,7 @@ const tag = (c) => ({
 
 const base = {
   app:{ minHeight:"100vh", background:"#0a0a0a", color:"#fff", fontFamily:F, paddingBottom:80 },
-  topBar:{ background:"#111", borderBottom:"1px solid #222", padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 },
+  topBar:{ background:"#0d0d0d", borderBottom:"1px solid #222", padding:"12px 16px", display:"flex", alignItems:"center", justifyContent:"space-between", position:"sticky", top:0, zIndex:50 },
   main:{ padding:16 },
   card:{ background:"#161616", border:"1px solid #222", borderRadius:14, padding:16, marginBottom:12 },
   input:{ background:"#1a1a1a", border:"1px solid #333", borderRadius:10, padding:"14px 16px", color:"#fff", fontFamily:F, fontSize:16, width:"100%", boxSizing:"border-box", outline:"none", marginBottom:12, display:"block" },
@@ -128,8 +128,8 @@ export default function App() {
         <img src="/logo.png" alt="NSB" style={{ width:120, marginBottom:12 }} />
         <p style={{ color:"#555", letterSpacing:"0.3em", fontSize:10, textTransform:"uppercase", fontFamily:F }}>Never Stop Building</p>
       </div>
-      <div style={{ background:"#111", border:"1px solid #2a2a2a", borderRadius:16, padding:"28px 20px", width:"100%", maxWidth:380 }}>
-        <h2 style={{ fontSize:22, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:20, fontFamily:F }}>Iniciar Sesión</h2>
+      <div style={{ background:"#111", border:"none", borderRadius:16, padding:"28px 20px", width:"100%", maxWidth:380 }}>
+        <h2 style={{ fontSize:22, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:20, fontFamily:F }}>Iniciar Sesión</"#fff">
         <label style={base.label}>Email</label>
         <input style={base.input} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@email.com" onKeyDown={e=>e.key==="Enter"&&login()} />
         <label style={base.label}>Contraseña</label>
