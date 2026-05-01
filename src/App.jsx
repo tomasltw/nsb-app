@@ -124,8 +124,8 @@ export default function App() {
 
   // LOGIN
   if (!user) return (
-    <div style={{ minHeight:"100vh", background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", paddingTop:40, padding:"40px 20px 20px", fontFamily:F }}>
-      <div style={{ textAlign:"center", marginBottom:16 }}>
+    <div style={{ minHeight:"100vh", background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"flex-start", paddingTop:20, padding:"40px 20px 20px", fontFamily:F }}>
+      <div style={{ textAlign:"center", marginBottom:8 }}>
         <img src="/logo.png" alt="NSB" style={{ width:180, marginBottom:8 }} />
         <p style={{ color:"#555", letterSpacing:"0.3em", fontSize:10, textTransform:"uppercase", fontFamily:F }}>Never Stop Building</p>
       </div>
