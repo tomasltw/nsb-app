@@ -126,7 +126,7 @@ export default function App() {
   if (!user) return (
     <div style={{ minHeight:"100vh", background:"#0a0a0a", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"20px", fontFamily:F }}>
       <div style={{ textAlign:"center", marginBottom:12 }}>
-        <img src="/logo.png" alt="NSB" style={{ width:260, marginBottom:6 }} />
+        <img src="/nsb_sin_fondo.png" alt="NSB" style={{ width:260, marginBottom:6 }} />
         <p style={{ color:"#555", letterSpacing:"0.3em", fontSize:13, textTransform:"uppercase", fontFamily:F }}>Never Stop Building</p>
       </div>
       <div style={{ background:"#0d0d0d", borderRadius:16, padding:"24px 20px", width:"100%", maxWidth:380 }}>
@@ -150,7 +150,7 @@ export default function App() {
     return (
       <div style={base.app}>
         <div style={base.topBar}>
-          <img src="/logo.png" alt="NSB" style={{ height:32 }} />
+          <img src="/nsb_sin_fondo.png" alt="NSB" style={{ height:32 }} />
           <div style={{ display:"flex", alignItems:"center", gap:8 }}>
             <span style={{ color:"#666", fontSize:13, fontFamily:F }}>{user.name}</span>
             <button style={{...base.ghostBtn, padding:"6px 12px", fontSize:11}} onClick={logout}>Salir</button>
@@ -318,7 +318,7 @@ export default function App() {
   return (
     <div style={base.app}>
       <div style={base.topBar}>
-        <img src="/logo.png" alt="NSB" style={{ height:32 }} />
+        <img src="/nsb_sin_fondo.png" alt="NSB" style={{ height:32 }} />
         <div style={{ display:"flex", alignItems:"center", gap:8 }}>
           <span style={{ color:"#666", fontSize:13, fontFamily:F }}>{user.name.split(" ")[0]}</span>
           <button style={{...base.ghostBtn, padding:"6px 12px", fontSize:11}} onClick={logout}>Salir</button>
