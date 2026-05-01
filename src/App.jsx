@@ -32,6 +32,9 @@ const SESSIONS_TOKENS = { 2:8, 3:12, 4:16, 5:20 };
 const getDays = (d) => { if (!d) return 0; return Math.ceil((new Date(d) - new Date()) / 86400000); };
 const getWeekdayFromDate = (dateStr) => WEEKDAY_NAMES[new Date(dateStr+"T12:00:00").getDay()];
 
+const AFORM_ONLINE = { name:"",email:"",password:"",plan:NSB_PLANS[0],expiry:"",payment_date:"",tipo_mixto:false,sessions_per_week:3 };
+const AFORM_PRES   = { name:"",email:"",password:"",plan:"",expiry:"",payment_date:"",tipo_mixto:false,sessions_per_week:3 };
+
 const tag = (c) => ({
   display:"inline-block", padding:"4px 10px", borderRadius:6, fontSize:11,
   fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase", fontFamily:F,
@@ -65,7 +68,6 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const todayKey = today.toISOString().split("T")[0];
-
   return (
     <div style={{ background:"#161616", border:"1px solid #222", borderRadius:16, padding:16, marginBottom:12 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -193,15 +195,12 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           </div>
           <span className={d<15?"p-red":d<30?"p-orange":"p-green"} style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
         </div>
-
         <div style={base.grid2}>
           <div style={base.statCard(typeColor)}><p style={base.h3}>Sesiones</p><p style={{ fontWeight:700,fontSize:14,fontFamily:F }}>{ath.sessions_per_week||3}x/sem</p></div>
           <div style={base.statCard("#a855f7")}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:36,fontWeight:800,lineHeight:1,fontFamily:F }}>{ath.tokens||0}</p></div>
           <div style={base.statCard("#f97316")}><p style={base.h3}>Pago</p><p style={{ fontWeight:700,fontSize:13,fontFamily:F }}>{ath.payment_date||"—"}</p></div>
           <div style={base.statCard("#22c55e")}><p style={base.h3}>Hechos</p><p className="p-green" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{aw.filter(w=>w.done).length}<span style={{ fontSize:13,color:"#666" }}>/{aw.length}</span></p></div>
         </div>
-
-        {/* Tokens */}
         <div style={base.card}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showTF?12:0 }}>
             <p style={base.h3}>Tokens</p>
@@ -221,18 +220,13 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             </div>
           ))}
         </div>
-
-        {/* Calendario */}
         <MonthCalendar workouts={aw} selectedDate={selDate} onDayClick={(key)=>{ setSelDate(key); setWForm(f=>({...f,date:key})); }} />
-
-        {/* Día */}
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
           <p style={{ fontWeight:700,fontSize:14,color:"#999",fontFamily:F }}>{selDate} · {getWeekdayFromDate(selDate)}</p>
           <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>{ setWForm({title:"",exercises:"",date:selDate,athlete_ids:[ath.id],comment:""}); setShowWF(!showWF); }}>
             {showWF?"Cerrar":"+ Agregar"}
           </button>
         </div>
-
         {showWF && <div style={base.card}>
           <h2 style={base.h2}>Nueva planificación</h2>
           <label style={base.label}>Fecha</label>
@@ -243,8 +237,6 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           <textarea style={{...base.input,height:140,resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"Press de banca 4x8\nRemo con barra 4x8\nPress militar 3x10"} />
           <label style={base.label}>Nota para el atleta</label>
           <input style={base.input} value={wForm.comment} onChange={e=>setWForm({...wForm,comment:e.target.value})} placeholder="Ej: Enfocarse en técnica, descanso 90s" />
-
-          {/* Lista de atletas SIEMPRE VISIBLE */}
           {otherAthletes.length > 0 && <>
             <label style={base.label}>
               Copiar también a{selectedCount > 0 && <span style={{ color:RED,marginLeft:6 }}>({selectedCount} seleccionados)</span>}
@@ -252,34 +244,28 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             <div style={{ background:"#0d0d0d",borderRadius:10,padding:"4px 12px",marginBottom:12 }}>
               {otherAthletes.map(a=>{
                 const selected = wForm.athlete_ids.includes(a.id);
-                const typeColor = a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
+                const tc = a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
                 return (
                   <div key={a.id} onClick={()=>toggleAthlete(a.id)} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 0",cursor:"pointer",borderBottom:"1px solid #1a1a1a" }}>
-                    <div style={{ width:24,height:24,borderRadius:6,border:`2px solid ${selected?RED:"#444"}`,background:selected?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,transition:"all 0.15s" }}>
+                    <div style={{ width:24,height:24,borderRadius:6,border:`2px solid ${selected?RED:"#444"}`,background:selected?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
                       {selected&&<span style={{ color:"#fff",fontSize:14,fontWeight:800 }}>✓</span>}
                     </div>
-                    <div style={{ width:34,height:34,borderRadius:"50%",background:`${typeColor}22`,border:`2px solid ${typeColor}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                      <span style={{ color:typeColor,fontWeight:800,fontSize:15,fontFamily:F }}>{a.name.charAt(0)}</span>
+                    <div style={{ width:34,height:34,borderRadius:"50%",background:`${tc}22`,border:`2px solid ${tc}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      <span style={{ color:tc,fontWeight:800,fontSize:15,fontFamily:F }}>{a.name.charAt(0)}</span>
                     </div>
                     <div style={{ flex:1 }}>
                       <p style={{ fontFamily:F,fontSize:15,fontWeight:700,color:selected?"#fff":"#ccc" }}>{a.name}</p>
                       <p style={{ fontFamily:F,fontSize:11,color:"#555" }}>{a.plan||"Sin plan"} · {a.type} · {a.tokens||0} tok</p>
                     </div>
-                    {selected && <span className="p-red" style={{ fontSize:18 }}>✓</span>}
                   </div>
                 );
               })}
             </div>
           </>}
-
           <button style={base.redBtn} onClick={createWorkout}>
-            {wForm.athlete_ids.length > 1
-              ? `Crear para ${wForm.athlete_ids.length} atletas`
-              : "Crear entrenamiento"
-            }
+            {wForm.athlete_ids.length > 1 ? `Crear para ${wForm.athlete_ids.length} atletas` : "Crear entrenamiento"}
           </button>
         </div>}
-
         <div style={base.card}>
           {dayW.length===0
             ? <p style={{ color:"#444",textAlign:"center",padding:16,fontFamily:F }}>Sin planificación para este día.</p>
@@ -307,7 +293,6 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             ))
           }
         </div>
-
         <div style={base.card}>
           <p style={base.h3}>Información</p>
           <div style={base.grid2}>
@@ -395,7 +380,7 @@ export default function App() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [chatPartner, setChatPartner] = useState(null);
   const [showAF, setShowAF] = useState(false);
-  const [aForm, setAForm] = useState({ name:"",email:"",password:"",plan:NSB_PLANS[0],expiry:"",payment_date:"",type:"Online",sessions_per_week:3 });
+  const [aForm, setAForm] = useState(AFORM_ONLINE);
   const [showSF, setShowSF] = useState(false);
   const [sForm, setSForm] = useState({ day:"Lunes",time:"",spots:4 });
   const [presDate, setPresDate] = useState(new Date().toISOString().split("T")[0]);
@@ -431,10 +416,28 @@ export default function App() {
   const logout = () => { setUser(null); setEmail(""); setPw(""); setView("home"); setSelectedAthlete(null); setSelectedPlan(null); setChatPartner(null); };
   const refresh = () => { if (user) load(user); };
 
+  // ── FIX DEFINITIVO: tipo basado en la vista actual ──
   const createAthlete = async () => {
     const tokens = SESSIONS_TOKENS[aForm.sessions_per_week]||12;
-    await supabase.from("users").insert({...aForm,role:"athlete",tokens,sessions_per_week:parseInt(aForm.sessions_per_week)});
-    setShowAF(false); setAForm({name:"",email:"",password:"",plan:NSB_PLANS[0],expiry:"",payment_date:"",type:"Online",sessions_per_week:3}); load(user);
+    const esPres = view === "presencial";
+    const tipo = aForm.tipo_mixto ? "Mixto" : esPres ? "Presencial" : "Online";
+    const data = {
+      name: aForm.name,
+      email: aForm.email,
+      password: aForm.password,
+      plan: aForm.plan || null,
+      expiry: aForm.expiry || null,
+      payment_date: aForm.payment_date || null,
+      sessions_per_week: parseInt(aForm.sessions_per_week),
+      role: "athlete",
+      tokens,
+      type: tipo,
+    };
+    const { error } = await supabase.from("users").insert(data);
+    if (error) { console.error("Error creando atleta:", error.message); return; }
+    setShowAF(false);
+    setAForm(esPres ? AFORM_PRES : AFORM_ONLINE);
+    load(user);
   };
 
   const createSchedule = async () => {
@@ -486,6 +489,39 @@ export default function App() {
     const presWeekday = getWeekdayFromDate(presDate);
     const filteredSchedules = schedules.filter(sch=>sch.day===presWeekday);
 
+    // Formulario reutilizable
+    const FormularioAtleta = ({ esPresencial }) => (
+      <div style={base.card}>
+        <h2 style={base.h2}>Nuevo atleta {esPresencial?"presencial":"online"}</h2>
+        {[["Nombre","name","text","Nombre completo"],["Email","email","email","email@ejemplo.com"],["Contraseña","password","text","Contraseña"]].map(([l,k,t,ph])=>(
+          <div key={k}><label style={base.label}>{l}</label><input style={base.input} type={t} value={aForm[k]} onChange={e=>setAForm({...aForm,[k]:e.target.value})} placeholder={ph} /></div>
+        ))}
+        {esPresencial
+          ? <div><label style={base.label}>Plan (opcional)</label><input style={base.input} value={aForm.plan} onChange={e=>setAForm({...aForm,plan:e.target.value})} placeholder="Ej: NSB Presencial" /></div>
+          : <><label style={base.label}>Plan NSB</label><select style={base.input} value={aForm.plan} onChange={e=>setAForm({...aForm,plan:e.target.value})}>{NSB_PLANS.map(p=><option key={p}>{p}</option>)}</select></>
+        }
+        <label style={base.label}>Vencimiento</label>
+        <input style={base.input} type="date" value={aForm.expiry} onChange={e=>setAForm({...aForm,expiry:e.target.value})} />
+        <label style={base.label}>Fecha de pago</label>
+        <input style={base.input} type="date" value={aForm.payment_date} onChange={e=>setAForm({...aForm,payment_date:e.target.value})} />
+        <label style={base.label}>Sesiones por semana</label>
+        <select style={base.input} value={aForm.sessions_per_week} onChange={e=>setAForm({...aForm,sessions_per_week:parseInt(e.target.value)})}>
+          <option value={2}>2x semana — 8 tokens/mes</option>
+          <option value={3}>3x semana — 12 tokens/mes</option>
+          <option value={4}>4x semana — 16 tokens/mes</option>
+          <option value={5}>5x semana — 20 tokens/mes</option>
+        </select>
+        {/* Checkbox Mixto */}
+        <div onClick={()=>setAForm({...aForm,tipo_mixto:!aForm.tipo_mixto})} style={{ display:"flex",alignItems:"center",gap:10,marginBottom:12,cursor:"pointer" }}>
+          <div style={{ width:22,height:22,borderRadius:5,border:`2px solid ${aForm.tipo_mixto?"#a855f7":"#444"}`,background:aForm.tipo_mixto?"#a855f7":"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
+            {aForm.tipo_mixto&&<span style={{ color:"#fff",fontSize:13 }}>✓</span>}
+          </div>
+          <p style={{ fontFamily:F,fontSize:14,color:"#ccc" }}>Es atleta Mixto (presencial + online)</p>
+        </div>
+        <button style={base.redBtn} onClick={createAthlete}>Crear atleta</button>
+      </div>
+    );
+
     return (
       <div style={base.app}>
         <div style={base.topBar}>
@@ -515,34 +551,9 @@ export default function App() {
           {view==="online" && <>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
               <h1 style={{...base.h1,marginBottom:0}}>Online</h1>
-              <button style={{...base.redBtn,width:"auto",padding:"10px 16px",fontSize:13}} onClick={()=>setShowAF(!showAF)}>+ Agregar</button>
+              <button style={{...base.redBtn,width:"auto",padding:"10px 16px",fontSize:13}} onClick={()=>{ setAForm(AFORM_ONLINE); setShowAF(!showAF); }}>+ Agregar</button>
             </div>
-            {showAF && <div style={base.card}>
-              <h2 style={base.h2}>Nuevo atleta</h2>
-              {[["Nombre","name","text","Nombre completo"],["Email","email","email","email@ejemplo.com"],["Contraseña","password","text","Contraseña"]].map(([l,k,t,ph])=>(
-                <div key={k}><label style={base.label}>{l}</label><input style={base.input} type={t} value={aForm[k]} onChange={e=>setAForm({...aForm,[k]:e.target.value})} placeholder={ph} /></div>
-              ))}
-              <label style={base.label}>Plan NSB</label>
-              <select style={base.input} value={aForm.plan} onChange={e=>setAForm({...aForm,plan:e.target.value})}>
-                {NSB_PLANS.map(p=><option key={p}>{p}</option>)}
-              </select>
-              <label style={base.label}>Vencimiento</label>
-              <input style={base.input} type="date" value={aForm.expiry} onChange={e=>setAForm({...aForm,expiry:e.target.value})} />
-              <label style={base.label}>Fecha de pago</label>
-              <input style={base.input} type="date" value={aForm.payment_date} onChange={e=>setAForm({...aForm,payment_date:e.target.value})} />
-              <label style={base.label}>Sesiones por semana</label>
-              <select style={base.input} value={aForm.sessions_per_week} onChange={e=>setAForm({...aForm,sessions_per_week:parseInt(e.target.value)})}>
-                <option value={2}>2x semana — 8 tokens/mes</option>
-                <option value={3}>3x semana — 12 tokens/mes</option>
-                <option value={4}>4x semana — 16 tokens/mes</option>
-                <option value={5}>5x semana — 20 tokens/mes</option>
-              </select>
-              <label style={base.label}>Tipo</label>
-              <select style={base.input} value={aForm.type} onChange={e=>setAForm({...aForm,type:e.target.value})}>
-                <option>Online</option><option>Mixto</option>
-              </select>
-              <button style={base.redBtn} onClick={createAthlete}>Crear atleta</button>
-            </div>}
+            {showAF && <FormularioAtleta esPresencial={false} />}
             {activePlans.map(plan=>{
               const planAthletes = onlineAthletes.filter(a=>a.plan===plan);
               return (
@@ -552,9 +563,7 @@ export default function App() {
                     <p style={{ color:"#666",fontSize:13,fontFamily:F }}>{planAthletes.length} atleta{planAthletes.length!==1?"s":""}</p>
                   </div>
                   <div style={{ display:"flex",alignItems:"center",gap:8 }}>
-                    <div style={{ display:"flex",gap:3 }}>
-                      {planAthletes.slice(0,4).map(a=><div key={a.id} style={{ width:8,height:8,borderRadius:"50%",background:RED }}/>)}
-                    </div>
+                    <div style={{ display:"flex",gap:3 }}>{planAthletes.slice(0,4).map(a=><div key={a.id} style={{ width:8,height:8,borderRadius:"50%",background:RED }}/>)}</div>
                     <span style={{ color:"#555",fontSize:20 }}>›</span>
                   </div>
                 </div>
@@ -570,30 +579,9 @@ export default function App() {
           {view==="presencial" && <>
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
               <h1 style={{...base.h1,marginBottom:0}}>Presencial</h1>
-              <button style={{...base.redBtn,width:"auto",padding:"10px 16px",fontSize:13}} onClick={()=>setShowAF(!showAF)}>+ Agregar</button>
+              <button style={{...base.redBtn,width:"auto",padding:"10px 16px",fontSize:13}} onClick={()=>{ setAForm(AFORM_PRES); setShowAF(!showAF); }}>+ Agregar</button>
             </div>
-            {showAF && <div style={base.card}>
-              <h2 style={base.h2}>Nuevo atleta</h2>
-              {[["Nombre","name","text","Nombre completo"],["Email","email","email","email@ejemplo.com"],["Contraseña","password","text","Contraseña"],["Plan","plan","text","Ej: NSB Presencial"]].map(([l,k,t,ph])=>(
-                <div key={k}><label style={base.label}>{l}</label><input style={base.input} type={t} value={aForm[k]} onChange={e=>setAForm({...aForm,[k]:e.target.value})} placeholder={ph} /></div>
-              ))}
-              <label style={base.label}>Vencimiento</label>
-              <input style={base.input} type="date" value={aForm.expiry} onChange={e=>setAForm({...aForm,expiry:e.target.value})} />
-              <label style={base.label}>Fecha de pago</label>
-              <input style={base.input} type="date" value={aForm.payment_date} onChange={e=>setAForm({...aForm,payment_date:e.target.value})} />
-              <label style={base.label}>Sesiones por semana</label>
-              <select style={base.input} value={aForm.sessions_per_week} onChange={e=>setAForm({...aForm,sessions_per_week:parseInt(e.target.value)})}>
-                <option value={2}>2x semana — 8 tokens/mes</option>
-                <option value={3}>3x semana — 12 tokens/mes</option>
-                <option value={4}>4x semana — 16 tokens/mes</option>
-                <option value={5}>5x semana — 20 tokens/mes</option>
-              </select>
-              <label style={base.label}>Tipo</label>
-              <select style={base.input} value={aForm.type} onChange={e=>setAForm({...aForm,type:e.target.value})}>
-                <option>Presencial</option><option>Mixto</option>
-              </select>
-              <button style={base.redBtn} onClick={createAthlete}>Crear atleta</button>
-            </div>}
+            {showAF && <FormularioAtleta esPresencial={true} />}
             <MonthCalendar workouts={[]} selectedDate={presDate} onDayClick={setPresDate} />
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
               <div>
@@ -683,7 +671,7 @@ export default function App() {
         </div>
         <div style={base.bottomNav}>
           {cv.map(v=>(
-            <button key={v} style={base.navItem(view===v)} onClick={()=>{ setView(v); setSelectedAthlete(null); setSelectedPlan(null); setChatPartner(null); }}>
+            <button key={v} style={base.navItem(view===v)} onClick={()=>{ setView(v); setSelectedAthlete(null); setSelectedPlan(null); setChatPartner(null); setShowAF(false); }}>
               <span style={{ fontSize:20,marginBottom:2 }}>{ci[v]}</span>{cl[v]}
             </button>
           ))}
