@@ -129,7 +129,7 @@ export default function App() {
         <p style={{ color:"#555", letterSpacing:"0.3em", fontSize:10, textTransform:"uppercase", fontFamily:F }}>Never Stop Building</p>
       </div>
       <div style={{ background:"#111", border:"none", borderRadius:16, padding:"28px 20px", width:"100%", maxWidth:380 }}>
-        <<h2 style={{ fontSize:22, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:20, color:"#fff", fontFamily:F }}>Iniciar Sesión</h2>
+        <h2 style={{ fontSize:22, fontWeight:800, textTransform:"uppercase", letterSpacing:"0.05em", marginBottom:20, color:"#fff", fontFamily:F }}>Iniciar Sesión</h2>
         <label style={base.label}>Email</label>
         <input style={base.input} type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="tu@email.com" onKeyDown={e=>e.key==="Enter"&&login()} />
         <label style={base.label}>Contraseña</label>
