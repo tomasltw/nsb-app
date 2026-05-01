@@ -18,11 +18,19 @@ const PULSE_STYLE = `
 .p-btn { animation: nsb-pulse 2s ease-in-out infinite; }
 `;
 
-const getDays = (d) => { if (!d) return 0; return Math.ceil((new Date(d) - new Date()) / 86400000); };
+const NSB_PLANS = [
+  "NSB CROSSFIT RX","NSB CROSSFIT SCLD","NSB HÍBRIDO",
+  "NSB FUNCIONAL","NSB HYROX","NSB GYM","NSB RUNNING","NSB AEROBIC"
+];
+
+const WEEKDAY_NAMES = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 const WEEKDAYS = ["D","L","M","M","J","V","S"];
 const DAYS_ES = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const SESSIONS_TOKENS = { 2:8, 3:12, 4:16, 5:20 };
+
+const getDays = (d) => { if (!d) return 0; return Math.ceil((new Date(d) - new Date()) / 86400000); };
+const getWeekdayFromDate = (dateStr) => WEEKDAY_NAMES[new Date(dateStr+"T12:00:00").getDay()];
 
 const tag = (c) => ({
   display:"inline-block", padding:"4px 10px", borderRadius:6, fontSize:11,
@@ -50,7 +58,6 @@ const base = {
   navItem:(active)=>({ flex:1, display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 0 12px", cursor:"pointer", color:active?RED:"#555", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", border:"none", background:"transparent", fontFamily:F }),
 };
 
-// ── CALENDARIO ──────────────────────────────────────────────
 function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
   const today = new Date();
   const [calDate, setCalDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -62,28 +69,28 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
   return (
     <div style={{ background:"#161616", border:"1px solid #222", borderRadius:16, padding:16, marginBottom:12 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
-        <button onClick={()=>setCalDate(new Date(year,month-1,1))} style={{ background:"none", border:"none", color:"#fff", fontSize:26, cursor:"pointer", padding:"0 8px" }}>‹</button>
+        <button onClick={()=>setCalDate(new Date(year,month-1,1))} style={{ background:"none",border:"none",color:"#fff",fontSize:26,cursor:"pointer",padding:"0 8px" }}>‹</button>
         <div style={{ textAlign:"center" }}>
-          <p style={{ fontWeight:800, fontSize:20, textTransform:"uppercase", fontFamily:F }}>{MONTHS[month]}</p>
-          <p style={{ color:"#555", fontSize:13, fontFamily:F }}>{year}</p>
+          <p style={{ fontWeight:800,fontSize:20,textTransform:"uppercase",fontFamily:F }}>{MONTHS[month]}</p>
+          <p style={{ color:"#555",fontSize:13,fontFamily:F }}>{year}</p>
         </div>
-        <button onClick={()=>setCalDate(new Date(year,month+1,1))} style={{ background:"none", border:"none", color:"#fff", fontSize:26, cursor:"pointer", padding:"0 8px" }}>›</button>
+        <button onClick={()=>setCalDate(new Date(year,month+1,1))} style={{ background:"none",border:"none",color:"#fff",fontSize:26,cursor:"pointer",padding:"0 8px" }}>›</button>
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", marginBottom:6 }}>
-        {WEEKDAYS.map((d,i)=><div key={i} style={{ textAlign:"center", fontSize:11, fontWeight:700, color:"#555", fontFamily:F }}>{d}</div>)}
+        {WEEKDAYS.map((d,i)=><div key={i} style={{ textAlign:"center",fontSize:11,fontWeight:700,color:"#555",fontFamily:F }}>{d}</div>)}
       </div>
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2 }}>
         {Array.from({length:firstDay}).map((_,i)=><div key={`e${i}`}/>)}
         {Array.from({length:daysInMonth}).map((_,i)=>{
-          const day = i+1;
-          const key = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-          const ws = workouts.filter(w=>w.date===key);
-          const isToday = key===todayKey, isSel = key===selectedDate;
+          const day=i+1;
+          const key=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+          const ws=workouts.filter(w=>w.date===key);
+          const isToday=key===todayKey, isSel=key===selectedDate;
           return (
-            <div key={day} onClick={()=>onDayClick(key)} style={{ textAlign:"center", padding:"6px 2px", cursor:"pointer", borderRadius:10, background:isSel?RED:isToday?`${RED}22`:"transparent" }}>
-              <p style={{ fontSize:16, fontWeight:isToday||isSel?800:400, color:isSel?"#fff":isToday?RED:"#fff", fontFamily:F, lineHeight:1, marginBottom:3 }}>{day}</p>
-              <div style={{ display:"flex", justifyContent:"center", gap:2, minHeight:6 }}>
-                {ws.slice(0,2).map((w,wi)=><div key={wi} style={{ width:6, height:6, borderRadius:"50%", background:w.done?"#22c55e":"#f97316" }}/>)}
+            <div key={day} onClick={()=>onDayClick(key)} style={{ textAlign:"center",padding:"6px 2px",cursor:"pointer",borderRadius:10,background:isSel?RED:isToday?`${RED}22`:"transparent" }}>
+              <p style={{ fontSize:16,fontWeight:isToday||isSel?800:400,color:isSel?"#fff":isToday?RED:"#fff",fontFamily:F,lineHeight:1,marginBottom:3 }}>{day}</p>
+              <div style={{ display:"flex",justifyContent:"center",gap:2,minHeight:6 }}>
+                {ws.slice(0,2).map((w,wi)=><div key={wi} style={{ width:6,height:6,borderRadius:"50%",background:w.done?"#22c55e":"#f97316" }}/>)}
               </div>
             </div>
           );
@@ -93,29 +100,27 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
   );
 }
 
-// ── TARJETA ATLETA ──────────────────────────────────────────
 function AthleteCard({ a, onClick }) {
-  const d = getDays(a.expiry);
-  const typeColor = a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
-  const typeCls = a.type==="Online"?"p-red":a.type==="Presencial"?"p-orange":"p-purple";
+  const d=getDays(a.expiry);
+  const typeColor=a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
+  const typeCls=a.type==="Online"?"p-red":a.type==="Presencial"?"p-orange":"p-purple";
   return (
-    <div onClick={onClick} style={{...base.card, cursor:"pointer", display:"flex", alignItems:"center", gap:12, marginBottom:8}}>
-      <div style={{ width:44, height:44, borderRadius:"50%", background:`${typeColor}22`, border:`2px solid ${typeColor}44`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-        <span className={typeCls} style={{ fontWeight:800, fontSize:18, fontFamily:F }}>{a.name.charAt(0)}</span>
+    <div onClick={onClick} style={{...base.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+      <div style={{ width:44,height:44,borderRadius:"50%",background:`${typeColor}22`,border:`2px solid ${typeColor}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+        <span className={typeCls} style={{ fontWeight:800,fontSize:18,fontFamily:F }}>{a.name.charAt(0)}</span>
       </div>
       <div style={{ flex:1 }}>
-        <p style={{ fontWeight:800, fontSize:16, fontFamily:F }}>{a.name}</p>
-        <p style={{ color:"#666", fontSize:12, fontFamily:F }}>{a.plan||"Sin plan"} · {a.tokens||0} tokens</p>
+        <p style={{ fontWeight:800,fontSize:16,fontFamily:F }}>{a.name}</p>
+        <p style={{ color:"#666",fontSize:12,fontFamily:F }}>{a.plan||"Sin plan"} · {a.tokens||0} tokens</p>
       </div>
-      <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+      <div style={{ display:"flex",alignItems:"center",gap:8 }}>
         <span className={d<15?"p-red":d<30?"p-orange":"p-green"} style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
-        <span style={{ color:"#555", fontSize:18 }}>›</span>
+        <span style={{ color:"#555",fontSize:18 }}>›</span>
       </div>
     </div>
   );
 }
 
-// ── PERFIL ATLETA (coach) ───────────────────────────────────
 function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefresh, user }) {
   const [selDate, setSelDate] = useState(new Date().toISOString().split("T")[0]);
   const [showWF, setShowWF] = useState(false);
@@ -124,19 +129,22 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const [wForm, setWForm] = useState({ title:"", exercises:"", date:selDate, athlete_ids:[ath.id], comment:"" });
   const [tForm, setTForm] = useState({ amount:"", reason:"" });
   const [commentText, setCommentText] = useState("");
+  const [showCopyList, setShowCopyList] = useState(false);
 
   const aw = workouts.filter(w=>w.athlete_id===ath.id);
   const dayW = aw.filter(w=>w.date===selDate);
   const d = getDays(ath.expiry);
   const athHistory = tokenHistory.filter(th=>th.athlete_id===ath.id);
+  const typeColor = ath.type==="Online"?RED:ath.type==="Presencial"?"#f97316":"#a855f7";
 
   const createWorkout = async () => {
+    if (!wForm.title.trim()) return;
     const exArr = wForm.exercises.split("\n").filter(e=>e.trim());
-    const ids = [...new Set(wForm.athlete_ids)];
+    const ids = [...new Set([ath.id, ...wForm.athlete_ids])];
     for (const aid of ids) {
-      const a = athletes.find(x=>x.id===aid) || ath;
+      const a = athletes.find(x=>x.id===aid)||ath;
       await supabase.from("workouts").insert({ title:wForm.title, exercises:exArr, date:wForm.date, athlete_id:aid, comment:wForm.comment });
-      if ((a.tokens||0) > 0) {
+      if ((a.tokens||0)>0) {
         await supabase.from("users").update({ tokens:(a.tokens||0)-1 }).eq("id",aid);
         await supabase.from("token_history").insert({ athlete_id:aid, amount:-1, reason:`Planificación: ${wForm.title} (${wForm.date})` });
       }
@@ -154,37 +162,43 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
 
   const addComment = async (wid) => {
     if (!commentText.trim()) return;
-    await supabase.from("workouts").update({ comment: commentText }).eq("id", wid);
+    await supabase.from("workouts").update({ comment:commentText }).eq("id",wid);
     setShowComment(null); setCommentText(""); onRefresh();
   };
 
-  const typeColor = ath.type==="Online"?RED:ath.type==="Presencial"?"#f97316":"#a855f7";
+  const toggleAthlete = (id) => {
+    if (id===ath.id) return;
+    const ids = wForm.athlete_ids.includes(id)
+      ? wForm.athlete_ids.filter(x=>x!==id)
+      : [...wForm.athlete_ids, id];
+    setWForm({...wForm, athlete_ids:ids});
+  };
 
   return (
     <div style={base.app}>
       <div style={base.topBar}>
-        <button onClick={onBack} style={{ background:"none", border:"none", color:RED, fontSize:16, fontWeight:700, cursor:"pointer", fontFamily:F }}>← Volver</button>
-        <span style={{ color:"#666", fontSize:13, fontFamily:F }}>{user.name}</span>
+        <button onClick={onBack} style={{ background:"none",border:"none",color:RED,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F }}>← Volver</button>
+        <span style={{ color:"#666",fontSize:13,fontFamily:F }}>{user.name}</span>
       </div>
       <div style={base.main}>
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:16 }}>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
           <div>
             <h1 style={{...base.h1,marginBottom:4}}>{ath.name}</h1>
             <span style={tag(ath.type==="Online"?"red":ath.type==="Presencial"?"orange":"purple")}>{ath.type}</span>
+            {ath.plan && <span style={{...tag("orange"),marginLeft:6}}>{ath.plan}</span>}
           </div>
           <span className={d<15?"p-red":d<30?"p-orange":"p-green"} style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
         </div>
 
         <div style={base.grid2}>
-          <div style={base.statCard(typeColor)}><p style={base.h3}>Plan</p><p style={{ fontWeight:700, fontSize:14, fontFamily:F }}>{ath.plan||"Sin plan"}</p><p style={{ color:"#f97316", fontSize:12, fontFamily:F }}>{ath.sessions_per_week||3}x/sem</p></div>
-          <div style={base.statCard("#a855f7")}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:36, fontWeight:800, lineHeight:1, fontFamily:F }}>{ath.tokens||0}</p></div>
-          <div style={base.statCard("#f97316")}><p style={base.h3}>Pago</p><p style={{ fontWeight:700, fontSize:13, fontFamily:F }}>{ath.payment_date||"—"}</p></div>
-          <div style={base.statCard("#22c55e")}><p style={base.h3}>Hechos</p><p className="p-green" style={{ fontSize:28, fontWeight:800, lineHeight:1, fontFamily:F }}>{aw.filter(w=>w.done).length}<span style={{ fontSize:13, color:"#666" }}>/{aw.length}</span></p></div>
+          <div style={base.statCard(typeColor)}><p style={base.h3}>Sesiones</p><p style={{ fontWeight:700,fontSize:14,fontFamily:F }}>{ath.sessions_per_week||3}x/sem</p></div>
+          <div style={base.statCard("#a855f7")}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:36,fontWeight:800,lineHeight:1,fontFamily:F }}>{ath.tokens||0}</p></div>
+          <div style={base.statCard("#f97316")}><p style={base.h3}>Pago</p><p style={{ fontWeight:700,fontSize:13,fontFamily:F }}>{ath.payment_date||"—"}</p></div>
+          <div style={base.statCard("#22c55e")}><p style={base.h3}>Hechos</p><p className="p-green" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{aw.filter(w=>w.done).length}<span style={{ fontSize:13,color:"#666" }}>/{aw.length}</span></p></div>
         </div>
 
-        {/* Tokens */}
         <div style={base.card}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:showTF?12:0 }}>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showTF?12:0 }}>
             <p style={base.h3}>Tokens</p>
             <button style={{...base.redBtn,width:"auto",padding:"6px 12px",fontSize:12}} onClick={()=>setShowTF(!showTF)}>Ajustar</button>
           </div>
@@ -195,69 +209,98 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             <input style={base.input} placeholder="Ej: Pago mensual" value={tForm.reason} onChange={e=>setTForm({...tForm,reason:e.target.value})} />
             <button style={base.redBtn} onClick={adjustTokens}>Confirmar</button>
           </>}
-          {athHistory.slice(0,6).map(h=>(
-            <div key={h.id} style={{ display:"flex", justifyContent:"space-between", padding:"8px 0", borderBottom:"1px solid #1a1a1a" }}>
-              <div><p style={{ fontSize:13, color:"#ccc", fontFamily:F }}>{h.reason}</p><p style={{ fontSize:11, color:"#555", fontFamily:F }}>{new Date(h.created_at).toLocaleDateString()}</p></div>
-              <span style={{ fontWeight:800, color:h.amount>0?"#22c55e":RED, fontFamily:F }}>{h.amount>0?"+":""}{h.amount}</span>
+          {athHistory.slice(0,5).map(h=>(
+            <div key={h.id} style={{ display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:"1px solid #1a1a1a" }}>
+              <div><p style={{ fontSize:13,color:"#ccc",fontFamily:F }}>{h.reason}</p><p style={{ fontSize:11,color:"#555",fontFamily:F }}>{new Date(h.created_at).toLocaleDateString()}</p></div>
+              <span style={{ fontWeight:800,color:h.amount>0?"#22c55e":RED,fontFamily:F }}>{h.amount>0?"+":""}{h.amount}</span>
             </div>
           ))}
         </div>
 
-        {/* Calendario */}
         <MonthCalendar workouts={aw} selectedDate={selDate} onDayClick={(key)=>{ setSelDate(key); setWForm(f=>({...f,date:key})); }} />
 
-        {/* Día seleccionado */}
-        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8 }}>
-          <p style={{ fontWeight:700, fontSize:14, color:"#999", fontFamily:F }}>{selDate}</p>
+        <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
+          <p style={{ fontWeight:700,fontSize:14,color:"#999",fontFamily:F }}>{selDate} · {getWeekdayFromDate(selDate)}</p>
           <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>{ setWForm({title:"",exercises:"",date:selDate,athlete_ids:[ath.id],comment:""}); setShowWF(!showWF); }}>+ Agregar</button>
         </div>
 
         {showWF && <div style={base.card}>
-          <h2 style={base.h2}>Nuevo entrenamiento</h2>
+          <h2 style={base.h2}>Nueva planificación</h2>
           <label style={base.label}>Fecha</label>
           <input style={base.input} type="date" value={wForm.date} onChange={e=>setWForm({...wForm,date:e.target.value})} />
           <label style={base.label}>Título</label>
           <input style={base.input} value={wForm.title} onChange={e=>setWForm({...wForm,title:e.target.value})} placeholder="Ej: Upper Body Strength" />
           <label style={base.label}>Ejercicios (uno por línea)</label>
-          <textarea style={{...base.input,height:120,resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"Press de banca 4x8\nRemo con barra 4x8"} />
-          <label style={base.label}>Comentario / nota para el atleta</label>
-          <input style={base.input} value={wForm.comment} onChange={e=>setWForm({...wForm,comment:e.target.value})} placeholder="Ej: Enfocarse en la técnica" />
-          <label style={base.label}>Agregar también a</label>
-          {athletes.filter(a=>a.id!==ath.id).map(a=>(
-            <div key={a.id} onClick={()=>{
-              const ids = wForm.athlete_ids.includes(a.id)?wForm.athlete_ids.filter(id=>id!==a.id):[...wForm.athlete_ids,a.id];
-              setWForm({...wForm,athlete_ids:ids.includes(ath.id)?ids:[ath.id,...ids]});
-            }} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 0", cursor:"pointer", borderBottom:"1px solid #1a1a1a" }}>
-              <div style={{ width:20,height:20,borderRadius:4,border:`2px solid ${wForm.athlete_ids.includes(a.id)?RED:"#444"}`,background:wForm.athlete_ids.includes(a.id)?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center" }}>
-                {wForm.athlete_ids.includes(a.id)&&<span style={{ color:"#fff",fontSize:12 }}>✓</span>}
-              </div>
-              <p style={{ fontFamily:F,fontSize:15 }}>{a.name} <span style={{ color:"#555",fontSize:12 }}>({a.type})</span></p>
-            </div>
-          ))}
-          <div style={{ marginTop:12 }}><button style={base.redBtn} onClick={createWorkout}>Crear entrenamiento</button></div>
+          <textarea style={{...base.input,height:140,resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"Press de banca 4x8\nRemo con barra 4x8\nPress militar 3x10"} />
+          <label style={base.label}>Nota para el atleta</label>
+          <input style={base.input} value={wForm.comment} onChange={e=>setWForm({...wForm,comment:e.target.value})} placeholder="Ej: Enfocarse en técnica, descanso 90s" />
+          <div style={{ marginBottom:12 }}>
+            <button style={{...base.ghostBtn,width:"100%",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}} onClick={()=>setShowCopyList(!showCopyList)}>
+              <span>Copiar planificación a otros atletas</span>
+              <span style={{ color:wForm.athlete_ids.length>1?RED:"#555" }}>
+                {wForm.athlete_ids.length>1?`+${wForm.athlete_ids.length-1} seleccionados`:showCopyList?"▲":"▼"}
+              </span>
+            </button>
+            {showCopyList && <div style={{ background:"#0d0d0d",borderRadius:10,padding:"8px 12px" }}>
+              {NSB_PLANS.map(plan=>{
+                const planAthletes = athletes.filter(a=>a.id!==ath.id&&a.plan===plan);
+                if (planAthletes.length===0) return null;
+                return (
+                  <div key={plan} style={{ marginBottom:12 }}>
+                    <p style={{ fontSize:11,fontWeight:700,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:F,marginBottom:6 }}>{plan}</p>
+                    {planAthletes.map(a=>(
+                      <div key={a.id} onClick={()=>toggleAthlete(a.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 0",cursor:"pointer",borderBottom:"1px solid #1a1a1a" }}>
+                        <div style={{ width:22,height:22,borderRadius:5,border:`2px solid ${wForm.athlete_ids.includes(a.id)?RED:"#444"}`,background:wForm.athlete_ids.includes(a.id)?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                          {wForm.athlete_ids.includes(a.id)&&<span style={{ color:"#fff",fontSize:13 }}>✓</span>}
+                        </div>
+                        <div>
+                          <p style={{ fontFamily:F,fontSize:15,fontWeight:600 }}>{a.name}</p>
+                          <p style={{ fontFamily:F,fontSize:11,color:"#555" }}>{a.type} · {a.tokens||0} tokens</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+              {athletes.filter(a=>a.id!==ath.id&&(!a.plan||!NSB_PLANS.includes(a.plan))).length>0 && <>
+                <p style={{ fontSize:11,fontWeight:700,color:"#555",letterSpacing:"0.1em",textTransform:"uppercase",fontFamily:F,marginBottom:6 }}>Sin plan</p>
+                {athletes.filter(a=>a.id!==ath.id&&(!a.plan||!NSB_PLANS.includes(a.plan))).map(a=>(
+                  <div key={a.id} onClick={()=>toggleAthlete(a.id)} style={{ display:"flex",alignItems:"center",gap:10,padding:"8px 0",cursor:"pointer",borderBottom:"1px solid #1a1a1a" }}>
+                    <div style={{ width:22,height:22,borderRadius:5,border:`2px solid ${wForm.athlete_ids.includes(a.id)?RED:"#444"}`,background:wForm.athlete_ids.includes(a.id)?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      {wForm.athlete_ids.includes(a.id)&&<span style={{ color:"#fff",fontSize:13 }}>✓</span>}
+                    </div>
+                    <p style={{ fontFamily:F,fontSize:15 }}>{a.name} <span style={{ color:"#555",fontSize:11 }}>({a.type})</span></p>
+                  </div>
+                ))}
+              </>}
+            </div>}
+          </div>
+          <button style={base.redBtn} onClick={createWorkout}>
+            Crear{wForm.athlete_ids.length>1?` para ${wForm.athlete_ids.length} atletas`:""}
+          </button>
         </div>}
 
         <div style={base.card}>
           {dayW.length===0
-            ? <p style={{ color:"#444",textAlign:"center",padding:16,fontFamily:F }}>Sin entrenamiento para este día.</p>
+            ? <p style={{ color:"#444",textAlign:"center",padding:16,fontFamily:F }}>Sin planificación para este día.</p>
             : dayW.map(w=>(
-              <div key={w.id} style={{ marginBottom:16 }}>
+              <div key={w.id} style={{ marginBottom:16,paddingBottom:16,borderBottom:"1px solid #1a1a1a" }}>
                 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
                   <p className="p-red" style={{ fontWeight:800,fontSize:16,textTransform:"uppercase",fontFamily:F }}>{w.title}</p>
                   <span className={w.done?"p-green":"p-orange"} style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
                 </div>
-                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:14,padding:"8px 0",borderBottom:"1px solid #1a1a1a",fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
-                {w.comment && <p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
+                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:14,padding:"8px 0",borderBottom:"1px solid #111",fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
+                {w.comment&&<p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
                 {showComment===w.id
                   ? <div style={{ marginTop:8 }}>
-                      <input style={base.input} placeholder="Agregar comentario..." value={commentText} onChange={e=>setCommentText(e.target.value)} />
+                      <input style={base.input} placeholder="Agregar nota..." value={commentText} onChange={e=>setCommentText(e.target.value)} />
                       <div style={{ display:"flex",gap:8 }}>
                         <button style={{...base.redBtn,padding:"10px"}} onClick={()=>addComment(w.id)}>Guardar</button>
                         <button style={{...base.ghostBtn,flex:1}} onClick={()=>setShowComment(null)}>Cancelar</button>
                       </div>
                     </div>
                   : <button style={{...base.ghostBtn,marginTop:8,fontSize:12,width:"100%"}} onClick={()=>{ setShowComment(w.id); setCommentText(w.comment||""); }}>
-                      {w.comment?"Editar comentario":"+ Comentario"}
+                      {w.comment?"Editar nota":"+ Agregar nota"}
                     </button>
                 }
               </div>
@@ -266,7 +309,7 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
         </div>
 
         <div style={base.card}>
-          <p style={base.h3}>Info</p>
+          <p style={base.h3}>Información</p>
           <div style={base.grid2}>
             {[["Email",ath.email],["Clave",ath.password],["Vence",ath.expiry||"—"],["Pago",ath.payment_date||"—"]].map(([l,v])=>(
               <div key={l} style={{ background:"#0d0d0d",borderRadius:8,padding:10 }}><p style={base.h3}>{l}</p><p style={{ fontWeight:600,fontSize:13,fontFamily:F }}>{v}</p></div>
@@ -279,17 +322,14 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   );
 }
 
-// ── CHAT ────────────────────────────────────────────────────
 function Chat({ user, partner, messages, onBack, onRefresh }) {
   const [newMsg, setNewMsg] = useState("");
   const conv = messages.filter(m=>(m.from_id===user.id&&m.to_id===partner.id)||(m.from_id===partner.id&&m.to_id===user.id));
-
   const send = async () => {
     if (!newMsg.trim()) return;
     await supabase.from("messages").insert({ from_id:user.id, to_id:partner.id, text:newMsg });
     setNewMsg(""); onRefresh();
   };
-
   return (
     <div style={base.app}>
       <div style={base.topBar}>
@@ -318,7 +358,27 @@ function Chat({ user, partner, messages, onBack, onRefresh }) {
   );
 }
 
-// ── APP PRINCIPAL ───────────────────────────────────────────
+function PlanView({ plan, athletes, onSelectAthlete, onBack }) {
+  const planAthletes = athletes.filter(a=>a.plan===plan);
+  return (
+    <div style={base.app}>
+      <div style={base.topBar}>
+        <button onClick={onBack} style={{ background:"none",border:"none",color:RED,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F }}>← Online</button>
+        <span style={{ fontWeight:700,fontSize:14,fontFamily:F }}>{plan}</span>
+        <span style={{ width:60 }}/>
+      </div>
+      <div style={base.main}>
+        <h1 style={{...base.h1,marginBottom:4}}>{plan}</h1>
+        <p style={{ color:"#666",fontSize:14,marginBottom:16,fontFamily:F }}>{planAthletes.length} atleta{planAthletes.length!==1?"s":""}</p>
+        {planAthletes.length===0
+          ? <div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin atletas en este plan.</p></div>
+          : planAthletes.map(a=><AthleteCard key={a.id} a={a} onClick={()=>onSelectAthlete(a)} />)
+        }
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [email, setEmail] = useState("");
@@ -332,12 +392,17 @@ export default function App() {
   const [workouts, setWorkouts] = useState([]);
   const [tokenHistory, setTokenHistory] = useState([]);
   const [selectedAthlete, setSelectedAthlete] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [chatPartner, setChatPartner] = useState(null);
   const [showAF, setShowAF] = useState(false);
-  const [aForm, setAForm] = useState({ name:"",email:"",password:"",plan:"",expiry:"",payment_date:"",type:"Online",sessions_per_week:3 });
+  const [aForm, setAForm] = useState({ name:"",email:"",password:"",plan:NSB_PLANS[0],expiry:"",payment_date:"",type:"Online",sessions_per_week:3 });
   const [showSF, setShowSF] = useState(false);
   const [sForm, setSForm] = useState({ day:"Lunes",time:"",spots:4 });
+  // ── FIX: estado separado para presencial ──
+  const [presDate, setPresDate] = useState(new Date().toISOString().split("T")[0]);
+  // ── estado atleta ──
   const [selDate, setSelDate] = useState(new Date().toISOString().split("T")[0]);
+  const [athView, setAthView] = useState("plan");
 
   useEffect(()=>{ const s=document.createElement("style"); s.textContent=PULSE_STYLE; document.head.appendChild(s); return()=>document.head.removeChild(s); },[]);
 
@@ -365,13 +430,13 @@ export default function App() {
     setLoading(false);
   };
 
-  const logout = () => { setUser(null); setEmail(""); setPw(""); setView("home"); setSelectedAthlete(null); setChatPartner(null); };
+  const logout = () => { setUser(null); setEmail(""); setPw(""); setView("home"); setSelectedAthlete(null); setSelectedPlan(null); setChatPartner(null); };
   const refresh = () => { if (user) load(user); };
 
   const createAthlete = async () => {
     const tokens = SESSIONS_TOKENS[aForm.sessions_per_week]||12;
     await supabase.from("users").insert({...aForm,role:"athlete",tokens,sessions_per_week:parseInt(aForm.sessions_per_week)});
-    setShowAF(false); setAForm({name:"",email:"",password:"",plan:"",expiry:"",payment_date:"",type:"Online",sessions_per_week:3}); load(user);
+    setShowAF(false); setAForm({name:"",email:"",password:"",plan:NSB_PLANS[0],expiry:"",payment_date:"",type:"Online",sessions_per_week:3}); load(user);
   };
 
   const createSchedule = async () => {
@@ -379,7 +444,16 @@ export default function App() {
     setShowSF(false); setSForm({day:"Lunes",time:"",spots:4}); load(user);
   };
 
-  // LOGIN
+  const bookSlot = async (sid) => {
+    const sch=schedules.find(s=>s.id===sid);
+    const mine=sch?.bookings?.find(b=>b.athlete_id===user?.id);
+    if (mine) await supabase.from("bookings").delete().eq("id",mine.id);
+    else await supabase.from("bookings").insert({schedule_id:sid,athlete_id:user?.id});
+    load(user);
+  };
+
+  const markDone = async (id) => { await supabase.from("workouts").update({done:true}).eq("id",id); load(user); };
+
   if (!user) return (
     <div style={{ minHeight:"100vh",background:"#0a0a0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"20px",fontFamily:F }}>
       <div style={{ textAlign:"center",marginBottom:4 }}>
@@ -401,8 +475,8 @@ export default function App() {
 
   // ── COACH ─────────────────────────────────────────────────
   if (user.role==="coach") {
-
     if (selectedAthlete) return <AthleteProfile ath={selectedAthlete} workouts={workouts} athletes={athletes} tokenHistory={tokenHistory} onBack={()=>setSelectedAthlete(null)} onRefresh={refresh} user={user} />;
+    if (selectedPlan) return <PlanView plan={selectedPlan} athletes={athletes} onSelectAthlete={(a)=>{ setSelectedAthlete(a); setSelectedPlan(null); }} onBack={()=>setSelectedPlan(null)} />;
     if (chatPartner) return <Chat user={user} partner={chatPartner} messages={messages} onBack={()=>setChatPartner(null)} onRefresh={refresh} />;
 
     const onlineAthletes = athletes.filter(a=>a.type==="Online"||a.type==="Mixto");
@@ -410,6 +484,12 @@ export default function App() {
     const cv = ["home","online","presencial","mensajes","info"];
     const ci = { home:"⚡",online:"💻",presencial:"🏋️",mensajes:"💬",info:"📋" };
     const cl = { home:"Inicio",online:"Online",presencial:"Presencial",mensajes:"Mensajes",info:"Info" };
+    const activePlans = NSB_PLANS.filter(p=>athletes.some(a=>a.plan===p&&(a.type==="Online"||a.type==="Mixto")));
+    const noPlanOnline = onlineAthletes.filter(a=>!NSB_PLANS.includes(a.plan));
+
+    // ── FIX: usar presDate para presencial ──
+    const presWeekday = getWeekdayFromDate(presDate);
+    const filteredSchedules = schedules.filter(sch=>sch.day===presWeekday);
 
     return (
       <div style={base.app}>
@@ -444,9 +524,13 @@ export default function App() {
             </div>
             {showAF && <div style={base.card}>
               <h2 style={base.h2}>Nuevo atleta</h2>
-              {[["Nombre","name","text","Nombre completo"],["Email","email","email","email@ejemplo.com"],["Contraseña","password","text","Contraseña"],["Plan","plan","text","Ej: NSB Online"]].map(([l,k,t,ph])=>(
+              {[["Nombre","name","text","Nombre completo"],["Email","email","email","email@ejemplo.com"],["Contraseña","password","text","Contraseña"]].map(([l,k,t,ph])=>(
                 <div key={k}><label style={base.label}>{l}</label><input style={base.input} type={t} value={aForm[k]} onChange={e=>setAForm({...aForm,[k]:e.target.value})} placeholder={ph} /></div>
               ))}
+              <label style={base.label}>Plan NSB</label>
+              <select style={base.input} value={aForm.plan} onChange={e=>setAForm({...aForm,plan:e.target.value})}>
+                {NSB_PLANS.map(p=><option key={p}>{p}</option>)}
+              </select>
               <label style={base.label}>Vencimiento</label>
               <input style={base.input} type="date" value={aForm.expiry} onChange={e=>setAForm({...aForm,expiry:e.target.value})} />
               <label style={base.label}>Fecha de pago</label>
@@ -464,10 +548,28 @@ export default function App() {
               </select>
               <button style={base.redBtn} onClick={createAthlete}>Crear atleta</button>
             </div>}
-            {onlineAthletes.length===0
-              ? <div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin atletas online aún.</p></div>
-              : onlineAthletes.map(a=><AthleteCard key={a.id} a={a} onClick={()=>setSelectedAthlete(a)} />)
-            }
+            {activePlans.map(plan=>{
+              const planAthletes = onlineAthletes.filter(a=>a.plan===plan);
+              return (
+                <div key={plan} onClick={()=>setSelectedPlan(plan)} style={{...base.card,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8,borderLeft:`3px solid ${RED}`}}>
+                  <div>
+                    <p className="p-red" style={{ fontWeight:800,fontSize:16,fontFamily:F }}>{plan}</p>
+                    <p style={{ color:"#666",fontSize:13,fontFamily:F }}>{planAthletes.length} atleta{planAthletes.length!==1?"s":""}</p>
+                  </div>
+                  <div style={{ display:"flex",alignItems:"center",gap:8 }}>
+                    <div style={{ display:"flex",flexDirection:"column",gap:2 }}>
+                      {planAthletes.slice(0,3).map(a=><div key={a.id} style={{ width:8,height:8,borderRadius:"50%",background:RED }}/>)}
+                    </div>
+                    <span style={{ color:"#555",fontSize:20 }}>›</span>
+                  </div>
+                </div>
+              );
+            })}
+            {noPlanOnline.length>0 && <>
+              <p style={{ color:"#555",fontSize:12,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",fontFamily:F,marginBottom:8 }}>Sin plan asignado</p>
+              {noPlanOnline.map(a=><AthleteCard key={a.id} a={a} onClick={()=>setSelectedAthlete(a)} />)}
+            </>}
+            {onlineAthletes.length===0&&!showAF&&<div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin atletas online aún.</p></div>}
           </>}
 
           {view==="presencial" && <>
@@ -498,14 +600,17 @@ export default function App() {
               <button style={base.redBtn} onClick={createAthlete}>Crear atleta</button>
             </div>}
 
-            {/* Calendario horarios */}
-            <MonthCalendar workouts={[]} selectedDate={selDate} onDayClick={setSelDate} />
+            {/* ── FIX: usar presDate y setPresDate ── */}
+            <MonthCalendar workouts={[]} selectedDate={presDate} onDayClick={setPresDate} />
 
-            {/* Horarios */}
             <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-              <p style={{ fontWeight:700,fontSize:15,color:"#999",fontFamily:F }}>Horarios</p>
+              <div>
+                <p style={{ fontWeight:800,fontSize:16,color:"#fff",fontFamily:F }}>{presWeekday}</p>
+                <p style={{ color:"#555",fontSize:12,fontFamily:F }}>{presDate}</p>
+              </div>
               <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>setShowSF(!showSF)}>+ Horario</button>
             </div>
+
             {showSF && <div style={base.card}>
               <h2 style={base.h2}>Nuevo horario</h2>
               <label style={base.label}>Día</label>
@@ -516,16 +621,20 @@ export default function App() {
               <input style={base.input} type="number" value={sForm.spots} onChange={e=>setSForm({...sForm,spots:e.target.value})} />
               <button style={base.redBtn} onClick={createSchedule}>Crear horario</button>
             </div>}
-            {schedules.map(sch=>(
-              <div key={sch.id} style={base.card}>
-                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
-                  <div><p style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",fontFamily:F }}>{sch.day}</p><p className="p-red" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{sch.time}</p></div>
-                  <div style={{ textAlign:"right" }}><p style={base.h3}>Cupos</p><p style={{ fontWeight:700,fontSize:22,fontFamily:F }}>{sch.bookings?.length||0}/{sch.spots}</p></div>
+
+            {filteredSchedules.length===0
+              ? <div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin horarios para el {presWeekday}.</p></div>
+              : filteredSchedules.map(sch=>(
+                <div key={sch.id} style={base.card}>
+                  <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
+                    <div><p style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",fontFamily:F }}>{sch.day}</p><p className="p-red" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{sch.time}</p></div>
+                    <div style={{ textAlign:"right" }}><p style={base.h3}>Cupos</p><p style={{ fontWeight:700,fontSize:22,fontFamily:F }}>{sch.bookings?.length||0}/{sch.spots}</p></div>
+                  </div>
+                  {sch.bookings?.length===0?<p style={{ color:"#444",fontSize:13,fontFamily:F }}>Sin reservas</p>:sch.bookings?.map(b=><p key={b.id} style={{ color:"#ccc",fontSize:14,padding:"3px 0",fontFamily:F }}>· {b.users?.name}</p>)}
+                  <button style={{...base.ghostBtn,marginTop:10,width:"100%",fontSize:12,color:RED,borderColor:`${RED}44`}} onClick={async()=>{ await supabase.from("schedules").delete().eq("id",sch.id); load(user); }}>Eliminar</button>
                 </div>
-                {sch.bookings?.map(b=><p key={b.id} style={{ color:"#ccc",fontSize:14,padding:"3px 0",fontFamily:F }}>· {b.users?.name}</p>)}
-                <button style={{...base.ghostBtn,marginTop:10,width:"100%",fontSize:12,color:RED,borderColor:`${RED}44`}} onClick={async()=>{ await supabase.from("schedules").delete().eq("id",sch.id); load(user); }}>Eliminar</button>
-              </div>
-            ))}
+              ))
+            }
 
             <div style={{ marginTop:16 }}>
               <h2 style={base.h2}>Atletas Presencial</h2>
@@ -538,24 +647,27 @@ export default function App() {
 
           {view==="mensajes" && <>
             <h1 style={{...base.h1,marginBottom:16}}>Mensajes</h1>
-            {athletes.map(a=>{
-              const conv=messages.filter(m=>(m.from_id===user.id&&m.to_id===a.id)||(m.from_id===a.id&&m.to_id===user.id));
-              const last=conv[conv.length-1];
-              const typeColor=a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
-              const typeCls=a.type==="Online"?"p-red":a.type==="Presencial"?"p-orange":"p-purple";
-              return (
-                <div key={a.id} onClick={()=>setChatPartner(a)} style={{...base.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
-                  <div style={{ width:44,height:44,borderRadius:"50%",background:`${typeColor}22`,border:`2px solid ${typeColor}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
-                    <span className={typeCls} style={{ fontWeight:800,fontSize:18,fontFamily:F }}>{a.name.charAt(0)}</span>
+            {athletes.length===0
+              ? <div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin atletas aún.</p></div>
+              : athletes.map(a=>{
+                const conv=messages.filter(m=>(m.from_id===user.id&&m.to_id===a.id)||(m.from_id===a.id&&m.to_id===user.id));
+                const last=conv[conv.length-1];
+                const typeColor=a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
+                const typeCls=a.type==="Online"?"p-red":a.type==="Presencial"?"p-orange":"p-purple";
+                return (
+                  <div key={a.id} onClick={()=>setChatPartner(a)} style={{...base.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
+                    <div style={{ width:44,height:44,borderRadius:"50%",background:`${typeColor}22`,border:`2px solid ${typeColor}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                      <span className={typeCls} style={{ fontWeight:800,fontSize:18,fontFamily:F }}>{a.name.charAt(0)}</span>
+                    </div>
+                    <div style={{ flex:1,minWidth:0 }}>
+                      <p style={{ fontWeight:800,fontSize:15,fontFamily:F }}>{a.name}</p>
+                      <p style={{ color:"#555",fontSize:13,fontFamily:F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{last?last.text:"Sin mensajes aún"}</p>
+                    </div>
+                    <span style={{ color:"#555",fontSize:18 }}>›</span>
                   </div>
-                  <div style={{ flex:1,minWidth:0 }}>
-                    <p style={{ fontWeight:800,fontSize:15,fontFamily:F }}>{a.name}</p>
-                    <p style={{ color:"#555",fontSize:13,fontFamily:F,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap" }}>{last?last.text:"Sin mensajes aún"}</p>
-                  </div>
-                  <span style={{ color:"#555",fontSize:18 }}>›</span>
-                </div>
-              );
-            })}
+                );
+              })
+            }
           </>}
 
           {view==="info" && <>
@@ -582,7 +694,7 @@ export default function App() {
         </div>
         <div style={base.bottomNav}>
           {cv.map(v=>(
-            <button key={v} style={base.navItem(view===v)} onClick={()=>{ setView(v); setSelectedAthlete(null); setChatPartner(null); }}>
+            <button key={v} style={base.navItem(view===v)} onClick={()=>{ setView(v); setSelectedAthlete(null); setSelectedPlan(null); setChatPartner(null); }}>
               <span style={{ fontSize:20,marginBottom:2 }}>{ci[v]}</span>{cl[v]}
             </button>
           ))}
@@ -593,29 +705,18 @@ export default function App() {
 
   // ── ATLETA ────────────────────────────────────────────────
   const daysLeft = getDays(user.expiry);
-  const dayWorkouts = workouts.filter(w=>w.date===selDate);
   const isOnline = user.type==="Online";
   const isPres = user.type==="Presencial";
   const isMixto = user.type==="Mixto";
+  const dayWorkouts = workouts.filter(w=>w.date===selDate);
+  const athWeekday = getWeekdayFromDate(selDate);
+  const athSchedules = schedules.filter(sch=>sch.day===athWeekday);
 
   if (chatPartner) return <Chat user={user} partner={chatPartner} messages={messages} onBack={()=>setChatPartner(null)} onRefresh={refresh} />;
 
-  const markDone = async (id) => { await supabase.from("workouts").update({done:true}).eq("id",id); load(user); };
-  const bookSlot = async (sid) => {
-    const sch=schedules.find(s=>s.id===sid);
-    const mine=sch?.bookings?.find(b=>b.athlete_id===user.id);
-    if (mine) await supabase.from("bookings").delete().eq("id",mine.id);
-    else await supabase.from("bookings").insert({schedule_id:sid,athlete_id:user.id});
-    load(user);
-  };
-
-  const av = isOnline ? ["plan","mensajes","info"] : isPres ? ["agendar","mensajes","info"] : ["plan","agendar","mensajes","info"];
+  const av = isOnline?["plan","mensajes","info"]:isPres?["agendar","mensajes","info"]:["plan","agendar","mensajes","info"];
   const ai = { plan:"📋",agendar:"📅",mensajes:"💬",info:"📋" };
   const al = { plan:"Mi Plan",agendar:"Agendar",mensajes:"Mensajes",info:"Info" };
-
-  // Setear vista inicial según tipo
-  const [viewInit] = useState(()=> isOnline?"plan":isPres?"agendar":"plan");
-  const [athView, setAthView] = useState(viewInit);
 
   return (
     <div style={base.app}>
@@ -628,78 +729,83 @@ export default function App() {
       </div>
       <div style={base.main}>
 
-        {/* Info rápida siempre visible */}
-        {athView==="plan"||athView==="agendar" ? <div style={{ display:"flex",gap:8,marginBottom:12,overflowX:"auto" }}>
-          <div style={{...base.statCard("#a855f7"),minWidth:100,flexShrink:0}}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{user.tokens||0}</p></div>
-          <div style={{...base.statCard(daysLeft<15?RED:daysLeft<30?"#f97316":"#22c55e"),minWidth:100,flexShrink:0}}><p style={base.h3}>Vence en</p><p className={daysLeft<15?"p-red":daysLeft<30?"p-orange":"p-green"} style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{daysLeft}d</p></div>
-          <div style={{...base.statCard("#f97316"),minWidth:100,flexShrink:0}}><p style={base.h3}>Pago</p><p style={{ fontWeight:700,fontSize:13,fontFamily:F }}>{user.payment_date||"—"}</p></div>
-        </div> : null}
+        {(athView==="plan"||athView==="agendar") && <div style={{ display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:4 }}>
+          <div style={{...base.statCard("#a855f7"),minWidth:90,flexShrink:0}}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:26,fontWeight:800,lineHeight:1,fontFamily:F }}>{user.tokens||0}</p></div>
+          <div style={{...base.statCard(daysLeft<15?RED:"#22c55e"),minWidth:90,flexShrink:0}}><p style={base.h3}>Vence</p><p className={daysLeft<15?"p-red":"p-green"} style={{ fontSize:26,fontWeight:800,lineHeight:1,fontFamily:F }}>{daysLeft}d</p></div>
+          <div style={{...base.statCard("#f97316"),minWidth:110,flexShrink:0}}><p style={base.h3}>Pago</p><p style={{ fontWeight:700,fontSize:12,fontFamily:F }}>{user.payment_date||"—"}</p></div>
+        </div>}
 
         {athView==="plan" && <>
           <h1 style={{...base.h1,marginBottom:16}}>Mi Planificación</h1>
           <MonthCalendar workouts={workouts} selectedDate={selDate} onDayClick={setSelDate} />
           <div style={base.card}>
-            <p style={{ fontWeight:700,fontSize:14,color:"#999",marginBottom:12,fontFamily:F }}>{selDate}</p>
+            <p style={{ fontWeight:700,fontSize:14,color:"#999",marginBottom:12,fontFamily:F }}>{selDate} · {athWeekday}</p>
             {dayWorkouts.length>0 ? dayWorkouts.map(w=>(
-              <div key={w.id} style={{ marginBottom:16 }}>
+              <div key={w.id} style={{ marginBottom:16,paddingBottom:16,borderBottom:"1px solid #1a1a1a" }}>
                 <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
                   <p className="p-red" style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",fontFamily:F }}>{w.title}</p>
                   <span className={w.done?"p-green":"p-orange"} style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
                 </div>
-                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:15,padding:"10px 0",borderBottom:"1px solid #1a1a1a",fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
+                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:15,padding:"10px 0",borderBottom:"1px solid #111",fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
                 {w.comment&&<p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
                 {!w.done&&<button className="p-btn" style={{...base.redBtn,marginTop:14}} onClick={()=>markDone(w.id)}>Marcar completado ✓</button>}
               </div>
-            )) : <p style={{ color:"#444",textAlign:"center",padding:20,fontFamily:F }}>Sin entrenamiento para este día.</p>}
+            )) : <p style={{ color:"#444",textAlign:"center",padding:20,fontFamily:F }}>Sin planificación para este día.</p>}
           </div>
         </>}
 
         {athView==="agendar" && <>
           <h1 style={{...base.h1,marginBottom:16}}>Agendar Sesión</h1>
-          {schedules.map(sch=>{
-            const isMine=sch.bookings?.some(b=>b.athlete_id===user.id);
-            const isFull=(sch.bookings?.length||0)>=sch.spots;
-            return <div key={sch.id} style={{...base.card,border:isMine?`1px solid ${RED}`:"1px solid #222",background:isMine?"#1a0505":"#161616"}}>
-              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
-                <div><p style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",fontFamily:F }}>{sch.day}</p><p className="p-red" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{sch.time}</p></div>
-                <div style={{ textAlign:"right" }}><p style={base.h3}>Cupos</p><p style={{ fontWeight:700,fontSize:20,fontFamily:F }}>{sch.bookings?.length||0}/{sch.spots}</p></div>
-              </div>
-              <button className={isMine?"p-btn":""} style={{ ...(isMine?base.redBtn:base.ghostBtn),fontSize:13 }} onClick={()=>bookSlot(sch.id)} disabled={!isMine&&isFull}>
-                {isMine?"✓ Reservado — Cancelar":isFull?"Sin cupos disponibles":"Reservar este horario"}
-              </button>
-            </div>;
-          })}
+          <MonthCalendar workouts={[]} selectedDate={selDate} onDayClick={setSelDate} />
+          <div style={{ marginBottom:12 }}>
+            <p style={{ fontWeight:800,fontSize:16,fontFamily:F }}>{athWeekday}</p>
+            <p style={{ color:"#555",fontSize:12,fontFamily:F }}>{selDate}</p>
+          </div>
+          {athSchedules.length===0
+            ? <div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin horarios disponibles para el {athWeekday}.</p></div>
+            : athSchedules.map(sch=>{
+              const isMine=sch.bookings?.some(b=>b.athlete_id===user.id);
+              const isFull=(sch.bookings?.length||0)>=sch.spots;
+              return <div key={sch.id} style={{...base.card,border:isMine?`1px solid ${RED}`:"1px solid #222",background:isMine?"#1a0505":"#161616"}}>
+                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12 }}>
+                  <div><p style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",fontFamily:F }}>{sch.day}</p><p className="p-red" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{sch.time}</p></div>
+                  <div style={{ textAlign:"right" }}><p style={base.h3}>Cupos</p><p style={{ fontWeight:700,fontSize:20,fontFamily:F }}>{sch.bookings?.length||0}/{sch.spots}</p></div>
+                </div>
+                <button className={isMine?"p-btn":""} style={{ ...(isMine?base.redBtn:base.ghostBtn),fontSize:13 }} onClick={()=>bookSlot(sch.id)} disabled={!isMine&&isFull}>
+                  {isMine?"✓ Reservado — Cancelar":isFull?"Sin cupos disponibles":"Reservar este horario"}
+                </button>
+              </div>;
+            })
+          }
         </>}
 
         {athView==="mensajes" && <>
           <h1 style={{...base.h1,marginBottom:16}}>Mensajes</h1>
-          {messages.length===0
-            ? <div style={base.card}><p style={{ color:"#444",fontFamily:F }}>Sin mensajes aún.</p></div>
-            : (()=>{
-                const coachId = messages.find(m=>m.from_id!==user.id)?.from_id || messages.find(m=>m.to_id!==user.id)?.to_id;
-                const coachName = messages.find(m=>m.from_id!==user.id)?.from?.name || "Coach";
-                return (
-                  <div onClick={()=>setChatPartner({id:coachId,name:coachName})} style={{...base.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
-                    <div style={{ width:44,height:44,borderRadius:"50%",background:`${RED}22`,border:`2px solid ${RED}44`,display:"flex",alignItems:"center",justifyContent:"center" }}>
-                      <span className="p-red" style={{ fontWeight:800,fontSize:18,fontFamily:F }}>C</span>
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <p style={{ fontWeight:800,fontSize:15,fontFamily:F }}>{coachName}</p>
-                      <p style={{ color:"#555",fontSize:13,fontFamily:F }}>{messages[messages.length-1]?.text||"Sin mensajes"}</p>
-                    </div>
-                    <span style={{ color:"#555",fontSize:18 }}>›</span>
-                  </div>
-                );
-              })()
-          }
+          {(()=>{
+            const coachMsg = messages.find(m=>m.from_id!==user.id)||messages.find(m=>m.to_id!==user.id);
+            const coachId = coachMsg?.from_id!==user.id?coachMsg?.from_id:coachMsg?.to_id;
+            const coachName = messages.find(m=>m.from_id!==user.id)?.from?.name||"Coach NSB";
+            return (
+              <div onClick={()=>setChatPartner({id:coachId,name:coachName})} style={{...base.card,cursor:"pointer",display:"flex",alignItems:"center",gap:12}}>
+                <div style={{ width:44,height:44,borderRadius:"50%",background:`${RED}22`,border:`2px solid ${RED}44`,display:"flex",alignItems:"center",justifyContent:"center" }}>
+                  <span className="p-red" style={{ fontWeight:800,fontSize:18,fontFamily:F }}>C</span>
+                </div>
+                <div style={{ flex:1 }}>
+                  <p style={{ fontWeight:800,fontSize:15,fontFamily:F }}>{coachName}</p>
+                  <p style={{ color:"#555",fontSize:13,fontFamily:F }}>{messages.length>0?messages[messages.length-1]?.text:"Sin mensajes aún"}</p>
+                </div>
+                <span style={{ color:"#555",fontSize:18 }}>›</span>
+              </div>
+            );
+          })()}
         </>}
 
         {athView==="info" && <>
           <h1 style={{...base.h1,marginBottom:4}}>Políticas</h1>
           <p style={{ color:"#666",fontSize:13,marginBottom:16,fontFamily:F }}>NSB Planning — Never Stop Building</p>
           {[
-            { title:"Presencial",color:RED,cls:"p-red",show:isPres||isMixto,items:["Las clases agendadas y no asistidas son recuperables, hasta 2 por mes.","Cancelaciones con 24 horas de anticipación.","Sin cancelación a tiempo, la clase se descuenta del plan.","Los horarios se reservan desde la app.","El plan no se congela por inasistencias."]},
-            { title:"Online",color:"#f97316",cls:"p-orange",show:isOnline||isMixto,items:["Las planificaciones se suben semanalmente a la app.","24 horas para consultar dudas sobre tu entrenamiento.","Seguimiento semanal a través de la app."]},
+            { title:"Presencial",color:RED,cls:"p-red",show:isPres||isMixto,items:["Clases no asistidas recuperables hasta 2 por mes.","Cancelaciones con 24 horas de anticipación.","Sin cancelación a tiempo, la clase se descuenta.","Horarios reservables desde la app."]},
+            { title:"Online",color:"#f97316",cls:"p-orange",show:isOnline||isMixto,items:["Planificaciones subidas semanalmente a la app.","24 horas para consultar dudas de tu entrenamiento.","Seguimiento semanal a través de la app."]},
             { title:"General",color:"#22c55e",cls:"p-green",show:true,items:["Pago mensual antes del inicio del período.","El plan vence en la fecha indicada.","Cada sesión descuenta 1 token del plan.","Los tokens se recargan al inicio de cada período pagado."]}
           ].filter(s=>s.show).map(sec=>(
             <div key={sec.title} style={{...base.card,borderLeft:`3px solid ${sec.color}`}}>
