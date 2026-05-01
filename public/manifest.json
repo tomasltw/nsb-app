@@ -1,0 +1,15 @@
+{
+  "name": "NSB Planning",
+  "short_name": "NSB",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#FF0040",
+  "icons": [
+    {
+      "src": "/appltw.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
