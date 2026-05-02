@@ -32,8 +32,29 @@ const SESSIONS_TOKENS = { 2:8, 3:12, 4:16, 5:20 };
 const getDays = (d) => { if (!d) return 0; return Math.ceil((new Date(d) - new Date()) / 86400000); };
 const getWeekdayFromDate = (dateStr) => WEEKDAY_NAMES[new Date(dateStr+"T12:00:00").getDay()];
 
-const AFORM_ONLINE = { name:"",email:"",password:"",plan:NSB_PLANS[0],expiry:"",payment_date:"",tipo_mixto:false,sessions_per_week:3 };
-const AFORM_PRES   = { name:"",email:"",password:"",plan:"",expiry:"",payment_date:"",tipo_mixto:false,sessions_per_week:3 };
+// Calcular vencimiento: start_date + 30 días
+const calcExpiry = (startDate) => {
+  if (!startDate) return null;
+  const d = new Date(startDate+"T12:00:00");
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().split("T")[0];
+};
+
+// Obtener fechas de pago futuras (cada 30 días desde start_date)
+const getPaymentDates = (startDate, monthsAhead = 3) => {
+  if (!startDate) return [];
+  const dates = [];
+  const base = new Date(startDate+"T12:00:00");
+  for (let i = 0; i <= monthsAhead * 2; i++) {
+    const d = new Date(base);
+    d.setDate(d.getDate() + i * 30);
+    dates.push(d.toISOString().split("T")[0]);
+  }
+  return dates;
+};
+
+const AFORM_ONLINE = { name:"",email:"",password:"",plan:NSB_PLANS[0],start_date:"",tipo_mixto:false,sessions_per_week:3 };
+const AFORM_PRES   = { name:"",email:"",password:"",plan:"",start_date:"",tipo_mixto:false,sessions_per_week:3 };
 
 const tag = (c) => ({
   display:"inline-block", padding:"4px 10px", borderRadius:6, fontSize:11,
@@ -61,13 +82,14 @@ const base = {
   navItem:(active)=>({ flex:1, display:"flex", flexDirection:"column", alignItems:"center", padding:"10px 0 12px", cursor:"pointer", color:active?RED:"#555", fontSize:10, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.05em", border:"none", background:"transparent", fontFamily:F }),
 };
 
-function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
+function MonthCalendar({ workouts=[], selectedDate, onDayClick, paymentDates=[], expiryDate="" }) {
   const today = new Date();
   const [calDate, setCalDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
   const year = calDate.getFullYear(), month = calDate.getMonth();
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const todayKey = today.toISOString().split("T")[0];
+
   return (
     <div style={{ background:"#161616", border:"1px solid #222", borderRadius:16, padding:16, marginBottom:12 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -78,6 +100,15 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
         </div>
         <button onClick={()=>setCalDate(new Date(year,month+1,1))} style={{ background:"none",border:"none",color:"#fff",fontSize:26,cursor:"pointer",padding:"0 8px" }}>›</button>
       </div>
+
+      {/* Leyenda */}
+      <div style={{ display:"flex", gap:12, marginBottom:10, flexWrap:"wrap" }}>
+        <div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:"50%",background:"#f97316" }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Pendiente</span></div>
+        <div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:"50%",background:"#22c55e" }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Completado</span></div>
+        <div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:"50%",background:"#a855f7" }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Pago</span></div>
+        {expiryDate&&<div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:2,background:RED }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Vence</span></div>}
+      </div>
+
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", marginBottom:6 }}>
         {WEEKDAYS.map((d,i)=><div key={i} style={{ textAlign:"center",fontSize:11,fontWeight:700,color:"#555",fontFamily:F }}>{d}</div>)}
       </div>
@@ -88,11 +119,18 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
           const key=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
           const ws=workouts.filter(w=>w.date===key);
           const isToday=key===todayKey, isSel=key===selectedDate;
+          const isPayment = paymentDates.includes(key);
+          const isExpiry = key===expiryDate;
+          const daysToPayment = isPayment ? getDays(key) : null;
+          const isUrgent = isPayment && daysToPayment !== null && daysToPayment >= 0 && daysToPayment <= 5;
+
           return (
-            <div key={day} onClick={()=>onDayClick(key)} style={{ textAlign:"center",padding:"6px 2px",cursor:"pointer",borderRadius:10,background:isSel?RED:isToday?`${RED}22`:"transparent" }}>
-              <p style={{ fontSize:16,fontWeight:isToday||isSel?800:400,color:isSel?"#fff":isToday?RED:"#fff",fontFamily:F,lineHeight:1,marginBottom:3 }}>{day}</p>
-              <div style={{ display:"flex",justifyContent:"center",gap:2,minHeight:6 }}>
-                {ws.slice(0,2).map((w,wi)=><div key={wi} style={{ width:6,height:6,borderRadius:"50%",background:w.done?"#22c55e":"#f97316" }}/>)}
+            <div key={day} onClick={()=>onDayClick(key)} style={{ textAlign:"center",padding:"4px 2px",cursor:"pointer",borderRadius:10,background:isSel?RED:isToday?`${RED}22`:isExpiry?`${RED}11`:isPayment?"#a855f711":"transparent", border: isExpiry?`1px solid ${RED}44`:isPayment?"1px solid #a855f744":"1px solid transparent" }}>
+              <p style={{ fontSize:15,fontWeight:isToday||isSel||isPayment||isExpiry?800:400,color:isSel?"#fff":isToday?RED:isExpiry?RED:isPayment?"#a855f7":"#fff",fontFamily:F,lineHeight:1,marginBottom:2 }}>{day}</p>
+              <div style={{ display:"flex",justifyContent:"center",gap:1,minHeight:6 }}>
+                {ws.slice(0,2).map((w,wi)=><div key={wi} style={{ width:5,height:5,borderRadius:"50%",background:w.done?"#22c55e":"#f97316" }}/>)}
+                {isPayment&&!isSel&&<div style={{ width:5,height:5,borderRadius:"50%",background: isUrgent?RED:"#a855f7" }}/>}
+                {isExpiry&&!isSel&&<div style={{ width:5,height:5,borderRadius:1,background:RED }}/>}
               </div>
             </div>
           );
@@ -103,7 +141,8 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick }) {
 }
 
 function AthleteCard({ a, onClick }) {
-  const d=getDays(a.expiry);
+  const expiry = a.start_date ? calcExpiry(a.start_date) : a.expiry;
+  const d=getDays(expiry);
   const typeColor=a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
   const typeCls=a.type==="Online"?"p-red":a.type==="Presencial"?"p-orange":"p-purple";
   return (
@@ -132,13 +171,20 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const [tForm, setTForm] = useState({ amount:"", reason:"" });
   const [commentText, setCommentText] = useState("");
 
+  const expiry = ath.start_date ? calcExpiry(ath.start_date) : ath.expiry;
+  const paymentDates = getPaymentDates(ath.start_date, 6);
   const aw = workouts.filter(w=>w.athlete_id===ath.id);
   const dayW = aw.filter(w=>w.date===selDate);
-  const d = getDays(ath.expiry);
+  const d = getDays(expiry);
   const athHistory = tokenHistory.filter(th=>th.athlete_id===ath.id);
   const typeColor = ath.type==="Online"?RED:ath.type==="Presencial"?"#f97316":"#a855f7";
   const otherAthletes = athletes.filter(a=>a.id!==ath.id);
   const selectedCount = wForm.athlete_ids.filter(id=>id!==ath.id).length;
+
+  // Próximo pago
+  const today = new Date().toISOString().split("T")[0];
+  const nextPayment = paymentDates.find(d=>d>=today);
+  const daysToPayment = nextPayment ? getDays(nextPayment) : null;
 
   const createWorkout = async () => {
     if (!wForm.title.trim()) return;
@@ -173,9 +219,7 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
 
   const toggleAthlete = (id) => {
     if (id===ath.id) return;
-    const ids = wForm.athlete_ids.includes(id)
-      ? wForm.athlete_ids.filter(x=>x!==id)
-      : [...wForm.athlete_ids, id];
+    const ids = wForm.athlete_ids.includes(id) ? wForm.athlete_ids.filter(x=>x!==id) : [...wForm.athlete_ids, id];
     setWForm({...wForm, athlete_ids:ids});
   };
 
@@ -194,12 +238,23 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           </div>
           <span className={d<15?"p-red":d<30?"p-orange":"p-green"} style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
         </div>
+
+        {/* Alerta pago próximo */}
+        {daysToPayment !== null && daysToPayment <= 5 && (
+          <div style={{ background:"#1a0a1a", border:"1px solid #a855f7", borderRadius:12, padding:12, marginBottom:12 }}>
+            <p className="p-purple" style={{ fontWeight:700, fontSize:14, fontFamily:F }}>💜 Pago en {daysToPayment} días — {nextPayment}</p>
+          </div>
+        )}
+
         <div style={base.grid2}>
           <div style={base.statCard(typeColor)}><p style={base.h3}>Sesiones</p><p style={{ fontWeight:700,fontSize:14,fontFamily:F }}>{ath.sessions_per_week||3}x/sem</p></div>
           <div style={base.statCard("#a855f7")}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:36,fontWeight:800,lineHeight:1,fontFamily:F }}>{ath.tokens||0}</p></div>
-          <div style={base.statCard("#f97316")}><p style={base.h3}>Pago</p><p style={{ fontWeight:700,fontSize:13,fontFamily:F }}>{ath.payment_date||"—"}</p></div>
-          <div style={base.statCard("#22c55e")}><p style={base.h3}>Hechos</p><p className="p-green" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{aw.filter(w=>w.done).length}<span style={{ fontSize:13,color:"#666" }}>/{aw.length}</span></p></div>
+          <div style={base.statCard("#a855f7")}><p style={base.h3}>Próximo pago</p><p style={{ fontWeight:700,fontSize:13,color:"#a855f7",fontFamily:F }}>{nextPayment||"—"}</p></div>
+          <div style={base.statCard(RED)}><p style={base.h3}>Vence</p><p style={{ fontWeight:700,fontSize:13,color:d<15?RED:"#ccc",fontFamily:F }}>{expiry||"—"}</p></div>
+          <div style={{...base.statCard("#22c55e"),gridColumn:"1/-1"}}><p style={base.h3}>Completados</p><p className="p-green" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{aw.filter(w=>w.done).length}<span style={{ fontSize:13,color:"#666" }}>/{aw.length}</span></p></div>
         </div>
+
+        {/* Tokens */}
         <div style={base.card}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showTF?12:0 }}>
             <p style={base.h3}>Tokens</p>
@@ -219,13 +274,16 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             </div>
           ))}
         </div>
-        <MonthCalendar workouts={aw} selectedDate={selDate} onDayClick={(key)=>{ setSelDate(key); setWForm(f=>({...f,date:key})); }} />
+
+        <MonthCalendar workouts={aw} selectedDate={selDate} onDayClick={(key)=>{ setSelDate(key); setWForm(f=>({...f,date:key})); }} paymentDates={paymentDates} expiryDate={expiry||""} />
+
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
           <p style={{ fontWeight:700,fontSize:14,color:"#999",fontFamily:F }}>{selDate} · {getWeekdayFromDate(selDate)}</p>
           <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>{ setWForm({title:"",exercises:"",date:selDate,athlete_ids:[ath.id],comment:""}); setShowWF(!showWF); }}>
             {showWF?"Cerrar":"+ Agregar"}
           </button>
         </div>
+
         {showWF && <div style={base.card}>
           <h2 style={base.h2}>Nueva planificación</h2>
           <label style={base.label}>Fecha</label>
@@ -237,9 +295,7 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           <label style={base.label}>Nota para el atleta</label>
           <input style={base.input} value={wForm.comment} onChange={e=>setWForm({...wForm,comment:e.target.value})} placeholder="Ej: Enfocarse en técnica" />
           {otherAthletes.length > 0 && <>
-            <label style={base.label}>
-              Copiar también a{selectedCount > 0 && <span style={{ color:RED,marginLeft:6 }}>({selectedCount} seleccionados)</span>}
-            </label>
+            <label style={base.label}>Copiar también a{selectedCount > 0 && <span style={{ color:RED,marginLeft:6 }}>({selectedCount} seleccionados)</span>}</label>
             <div style={{ background:"#0d0d0d",borderRadius:10,padding:"4px 12px",marginBottom:12 }}>
               {otherAthletes.map(a=>{
                 const selected = wForm.athlete_ids.includes(a.id);
@@ -265,6 +321,7 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             {wForm.athlete_ids.length > 1 ? `Crear para ${wForm.athlete_ids.length} atletas` : "Crear entrenamiento"}
           </button>
         </div>}
+
         <div style={base.card}>
           {dayW.length===0
             ? <p style={{ color:"#444",textAlign:"center",padding:16,fontFamily:F }}>Sin planificación para este día.</p>
@@ -292,10 +349,11 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             ))
           }
         </div>
+
         <div style={base.card}>
           <p style={base.h3}>Información</p>
           <div style={base.grid2}>
-            {[["Email",ath.email],["Clave",ath.password],["Vence",ath.expiry||"—"],["Pago",ath.payment_date||"—"]].map(([l,v])=>(
+            {[["Email",ath.email],["Clave",ath.password],["Inicio",ath.start_date||"—"],["Vence",expiry||"—"]].map(([l,v])=>(
               <div key={l} style={{ background:"#0d0d0d",borderRadius:8,padding:10 }}><p style={base.h3}>{l}</p><p style={{ fontWeight:600,fontSize:13,fontFamily:F }}>{v}</p></div>
             ))}
           </div>
@@ -322,8 +380,7 @@ function Chat({ user, partner, messages, onBack, onRefresh }) {
         <span style={{ width:60 }}/>
       </div>
       <div style={{...base.main,paddingBottom:120}}>
-        {conv.length===0
-          ? <p style={{ color:"#444",textAlign:"center",padding:40,fontFamily:F }}>Sin mensajes aún.</p>
+        {conv.length===0 ? <p style={{ color:"#444",textAlign:"center",padding:40,fontFamily:F }}>Sin mensajes aún.</p>
           : conv.map(m=>(
             <div key={m.id} style={{ display:"flex",justifyContent:m.from_id===user.id?"flex-end":"flex-start",marginBottom:10 }}>
               <div style={{ maxWidth:"75%",background:m.from_id===user.id?RED:"#222",borderRadius:14,padding:"10px 14px" }}>
@@ -363,37 +420,34 @@ function PlanView({ plan, athletes, onSelectAthlete, onBack }) {
   );
 }
 
-// ── FORMULARIO ATLETA — componente externo para evitar pérdida de foco ──
 function FormAtleta({ aForm, setAForm, onSubmit, esPresencial }) {
+  const inputStyle = { background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" };
+  const labelStyle = { fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F };
+
   return (
-    <div style={{ background:"#161616", border:"1px solid #222", borderRadius:14, padding:16, marginBottom:12 }}>
+    <div style={{ background:"#161616",border:"1px solid #222",borderRadius:14,padding:16,marginBottom:12 }}>
       <h2 style={{ fontSize:20,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12,fontFamily:F }}>
         Nuevo atleta {esPresencial?"presencial":"online"}
       </h2>
-      <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Nombre</label>
-      <input style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} type="text" value={aForm.name} onChange={e=>setAForm(f=>({...f,name:e.target.value}))} placeholder="Nombre completo" />
-      <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Email</label>
-      <input style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} type="email" value={aForm.email} onChange={e=>setAForm(f=>({...f,email:e.target.value}))} placeholder="email@ejemplo.com" />
-      <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Contraseña</label>
-      <input style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} type="text" value={aForm.password} onChange={e=>setAForm(f=>({...f,password:e.target.value}))} placeholder="Contraseña" />
+      <label style={labelStyle}>Nombre</label>
+      <input style={inputStyle} type="text" value={aForm.name} onChange={e=>setAForm(f=>({...f,name:e.target.value}))} placeholder="Nombre completo" />
+      <label style={labelStyle}>Email</label>
+      <input style={inputStyle} type="email" value={aForm.email} onChange={e=>setAForm(f=>({...f,email:e.target.value}))} placeholder="email@ejemplo.com" />
+      <label style={labelStyle}>Contraseña</label>
+      <input style={inputStyle} type="text" value={aForm.password} onChange={e=>setAForm(f=>({...f,password:e.target.value}))} placeholder="Contraseña" />
       {esPresencial
-        ? <>
-            <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Plan (opcional)</label>
-            <input style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))} placeholder="Ej: NSB Presencial" />
-          </>
-        : <>
-            <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Plan NSB</label>
-            <select style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))}>
-              {NSB_PLANS.map(p=><option key={p}>{p}</option>)}
-            </select>
-          </>
+        ? <><label style={labelStyle}>Plan (opcional)</label><input style={inputStyle} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))} placeholder="Ej: NSB Presencial" /></>
+        : <><label style={labelStyle}>Plan NSB</label><select style={inputStyle} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))}>{NSB_PLANS.map(p=><option key={p}>{p}</option>)}</select></>
       }
-      <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Vencimiento</label>
-      <input style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} type="date" value={aForm.expiry} onChange={e=>setAForm(f=>({...f,expiry:e.target.value}))} />
-      <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Fecha de pago</label>
-      <input style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} type="date" value={aForm.payment_date} onChange={e=>setAForm(f=>({...f,payment_date:e.target.value}))} />
-      <label style={{ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F }}>Sesiones por semana</label>
-      <select style={{ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" }} value={aForm.sessions_per_week} onChange={e=>setAForm(f=>({...f,sessions_per_week:parseInt(e.target.value)}))}>
+      <label style={labelStyle}>Fecha de inicio / pago</label>
+      <input style={inputStyle} type="date" value={aForm.start_date} onChange={e=>setAForm(f=>({...f,start_date:e.target.value}))} />
+      {aForm.start_date && (
+        <p style={{ color:"#a855f7",fontSize:13,fontFamily:F,marginBottom:12,marginTop:-8 }}>
+          💜 Vence el {calcExpiry(aForm.start_date)} · Próximo pago: {calcExpiry(aForm.start_date)}
+        </p>
+      )}
+      <label style={labelStyle}>Sesiones por semana</label>
+      <select style={inputStyle} value={aForm.sessions_per_week} onChange={e=>setAForm(f=>({...f,sessions_per_week:parseInt(e.target.value)}))}>
         <option value={2}>2x semana — 8 tokens/mes</option>
         <option value={3}>3x semana — 12 tokens/mes</option>
         <option value={4}>4x semana — 16 tokens/mes</option>
@@ -466,13 +520,15 @@ export default function App() {
     const tokens = SESSIONS_TOKENS[aForm.sessions_per_week]||12;
     const esPres = view === "presencial";
     const tipo = aForm.tipo_mixto ? "Mixto" : esPres ? "Presencial" : "Online";
+    const expiry = calcExpiry(aForm.start_date);
     const data = {
       name: aForm.name,
       email: aForm.email,
       password: aForm.password,
       plan: aForm.plan || null,
-      expiry: aForm.expiry || null,
-      payment_date: aForm.payment_date || null,
+      start_date: aForm.start_date || null,
+      expiry: expiry || null,
+      payment_date: aForm.start_date || null,
       sessions_per_week: parseInt(aForm.sessions_per_week),
       role: "athlete",
       tokens,
@@ -554,6 +610,16 @@ export default function App() {
               <div style={base.statCard("#22c55e")}><p style={base.h3}>Planes</p><p className="p-green" style={{ fontSize:40,fontWeight:800,lineHeight:1,fontFamily:F }}>{workouts.length}</p></div>
               <div style={base.statCard("#a855f7")}><p style={base.h3}>Mensajes</p><p className="p-purple" style={{ fontSize:40,fontWeight:800,lineHeight:1,fontFamily:F }}>{messages.length}</p></div>
             </div>
+            {/* Alertas de pago próximo */}
+            {athletes.filter(a=>{ const pd = getPaymentDates(a.start_date,1); const next = pd.find(d=>d>=new Date().toISOString().split("T")[0]); return next && getDays(next)<=5 && getDays(next)>=0; }).map(a=>{
+              const pd = getPaymentDates(a.start_date,1);
+              const next = pd.find(d=>d>=new Date().toISOString().split("T")[0]);
+              return (
+                <div key={a.id} style={{ background:"#1a0a1a",border:"1px solid #a855f7",borderRadius:12,padding:12,marginBottom:8 }}>
+                  <p className="p-purple" style={{ fontWeight:700,fontSize:14,fontFamily:F }}>💜 {a.name} — pago en {getDays(next)} días ({next})</p>
+                </div>
+              );
+            })}
             <div style={base.card}>
               <h2 style={base.h2}>Atletas recientes</h2>
               {athletes.slice(0,4).map(a=><AthleteCard key={a.id} a={a} onClick={()=>setSelectedAthlete(a)} />)}
@@ -666,7 +732,7 @@ export default function App() {
               { title:"Presencial",color:RED,cls:"p-red",items:["Las clases agendadas y no asistidas son recuperables, hasta 2 por mes.","Las cancelaciones deben realizarse con 24 horas de anticipación.","Si no cancelas a tiempo, la clase se descuenta del plan.","Los horarios se reservan con antelación desde la app.","El plan mensual no se congela ni se extiende por inasistencias."]},
               { title:"Online",color:"#f97316",cls:"p-orange",items:["Las planificaciones se suben semanalmente a la app.","Tienes 24 horas para consultar dudas sobre tu entrenamiento.","El seguimiento se realiza a través de la app cada semana.","Los materiales de apoyo se envían por mensaje interno."]},
               { title:"Mixto",color:"#a855f7",cls:"p-purple",items:["Combina sesiones presenciales y planificación online.","Las políticas presenciales aplican para las clases en persona.","La parte online sigue las políticas del plan online."]},
-              { title:"General",color:"#22c55e",cls:"p-green",items:["El pago es mensual y debe realizarse antes del inicio del período.","El plan vence en la fecha indicada sin importar el uso.","Cada sesión subida descuenta 1 token del plan.","Los tokens se recargan al inicio de cada período pagado."]}
+              { title:"General",color:"#22c55e",cls:"p-green",items:["El pago es mensual y se renueva cada 30 días desde la fecha de inicio.","El plan vence automáticamente al cumplirse los 30 días.","Cada sesión subida descuenta 1 token del plan.","Los tokens se recargan al renovar el período."]}
             ].map(sec=>(
               <div key={sec.title} style={{...base.card,borderLeft:`3px solid ${sec.color}`}}>
                 <p className={sec.cls} style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",marginBottom:12,fontFamily:F }}>{sec.title}</p>
@@ -693,13 +759,18 @@ export default function App() {
   }
 
   // ATLETA
-  const daysLeft = getDays(user.expiry);
+  const daysLeft = getDays(user.start_date ? calcExpiry(user.start_date) : user.expiry);
   const isOnline = user.type==="Online";
   const isPres = user.type==="Presencial";
   const isMixto = user.type==="Mixto";
   const dayWorkouts = workouts.filter(w=>w.date===selDate);
   const athWeekday = getWeekdayFromDate(selDate);
   const athSchedules = schedules.filter(sch=>sch.day===athWeekday);
+  const userPaymentDates = getPaymentDates(user.start_date, 6);
+  const userExpiry = user.start_date ? calcExpiry(user.start_date) : user.expiry;
+  const todayStr = new Date().toISOString().split("T")[0];
+  const nextPayment = userPaymentDates.find(d=>d>=todayStr);
+  const daysToPayment = nextPayment ? getDays(nextPayment) : null;
 
   if (chatPartner) return <Chat user={user} partner={chatPartner} messages={messages} onBack={()=>setChatPartner(null)} onRefresh={refresh} />;
 
@@ -717,15 +788,23 @@ export default function App() {
         </div>
       </div>
       <div style={base.main}>
-        {(athView==="plan"||athView==="agendar") && <div style={{ display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:4 }}>
-          <div style={{...base.statCard("#a855f7"),minWidth:90,flexShrink:0}}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:26,fontWeight:800,lineHeight:1,fontFamily:F }}>{user.tokens||0}</p></div>
-          <div style={{...base.statCard(daysLeft<15?RED:"#22c55e"),minWidth:90,flexShrink:0}}><p style={base.h3}>Vence</p><p className={daysLeft<15?"p-red":"p-green"} style={{ fontSize:26,fontWeight:800,lineHeight:1,fontFamily:F }}>{daysLeft}d</p></div>
-          <div style={{...base.statCard("#f97316"),minWidth:110,flexShrink:0}}><p style={base.h3}>Pago</p><p style={{ fontWeight:700,fontSize:12,fontFamily:F }}>{user.payment_date||"—"}</p></div>
-        </div>}
+
+        {(athView==="plan"||athView==="agendar") && <>
+          {daysToPayment !== null && daysToPayment <= 5 && (
+            <div style={{ background:"#1a0a1a",border:"1px solid #a855f7",borderRadius:12,padding:12,marginBottom:12 }}>
+              <p className="p-purple" style={{ fontWeight:700,fontSize:14,fontFamily:F }}>💜 Tu próximo pago es en {daysToPayment} días — {nextPayment}</p>
+            </div>
+          )}
+          <div style={{ display:"flex",gap:8,marginBottom:12,overflowX:"auto",paddingBottom:4 }}>
+            <div style={{...base.statCard("#a855f7"),minWidth:90,flexShrink:0}}><p style={base.h3}>Tokens</p><p className="p-purple" style={{ fontSize:26,fontWeight:800,lineHeight:1,fontFamily:F }}>{user.tokens||0}</p></div>
+            <div style={{...base.statCard(daysLeft<15?RED:"#22c55e"),minWidth:90,flexShrink:0}}><p style={base.h3}>Vence</p><p className={daysLeft<15?"p-red":"p-green"} style={{ fontSize:26,fontWeight:800,lineHeight:1,fontFamily:F }}>{daysLeft}d</p></div>
+            <div style={{...base.statCard("#a855f7"),minWidth:110,flexShrink:0}}><p style={base.h3}>Pago</p><p style={{ fontWeight:700,fontSize:12,color:"#a855f7",fontFamily:F }}>{nextPayment||"—"}</p></div>
+          </div>
+        </>}
 
         {athView==="plan" && <>
           <h1 style={{...base.h1,marginBottom:16}}>Mi Planificación</h1>
-          <MonthCalendar workouts={workouts} selectedDate={selDate} onDayClick={setSelDate} />
+          <MonthCalendar workouts={workouts} selectedDate={selDate} onDayClick={setSelDate} paymentDates={userPaymentDates} expiryDate={userExpiry||""} />
           <div style={base.card}>
             <p style={{ fontWeight:700,fontSize:14,color:"#999",marginBottom:12,fontFamily:F }}>{selDate} · {athWeekday}</p>
             {dayWorkouts.length>0 ? dayWorkouts.map(w=>(
@@ -744,7 +823,7 @@ export default function App() {
 
         {athView==="agendar" && <>
           <h1 style={{...base.h1,marginBottom:16}}>Agendar Sesión</h1>
-          <MonthCalendar workouts={[]} selectedDate={selDate} onDayClick={setSelDate} />
+          <MonthCalendar workouts={[]} selectedDate={selDate} onDayClick={setSelDate} paymentDates={userPaymentDates} expiryDate={userExpiry||""} />
           <div style={{ marginBottom:12 }}>
             <p style={{ fontWeight:800,fontSize:16,fontFamily:F }}>{athWeekday}</p>
             <p style={{ color:"#555",fontSize:12,fontFamily:F }}>{selDate}</p>
@@ -794,7 +873,7 @@ export default function App() {
           {[
             { title:"Presencial",color:RED,cls:"p-red",show:isPres||isMixto,items:["Clases no asistidas recuperables hasta 2 por mes.","Cancelaciones con 24 horas de anticipación.","Sin cancelación a tiempo, la clase se descuenta.","Horarios reservables desde la app."]},
             { title:"Online",color:"#f97316",cls:"p-orange",show:isOnline||isMixto,items:["Planificaciones subidas semanalmente a la app.","24 horas para consultar dudas de tu entrenamiento.","Seguimiento semanal a través de la app."]},
-            { title:"General",color:"#22c55e",cls:"p-green",show:true,items:["Pago mensual antes del inicio del período.","El plan vence en la fecha indicada.","Cada sesión descuenta 1 token del plan.","Los tokens se recargan al inicio de cada período pagado."]}
+            { title:"General",color:"#22c55e",cls:"p-green",show:true,items:["El pago se renueva cada 30 días desde tu fecha de inicio.","El plan vence automáticamente al cumplirse los 30 días.","Cada sesión descuenta 1 token del plan.","Los tokens se recargan al renovar el período."]}
           ].filter(s=>s.show).map(sec=>(
             <div key={sec.title} style={{...base.card,borderLeft:`3px solid ${sec.color}`}}>
               <p className={sec.cls} style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",marginBottom:12,fontFamily:F }}>{sec.title}</p>
@@ -807,6 +886,7 @@ export default function App() {
             </div>
           ))}
         </>}
+
       </div>
       <div style={base.bottomNav}>
         {av.map(v=>(
