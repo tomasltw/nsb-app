@@ -158,14 +158,13 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const [showWF, setShowWF] = useState(false);
   const [showTF, setShowTF] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
-  const [editW, setEditW] = useState(null); // workout being edited
+  const [editW, setEditW] = useState(null);
   const [wForm, setWForm] = useState({ title:"", exercises:"", date:selDate, athlete_ids:[ath.id], comment:"" });
   const [tForm, setTForm] = useState({ amount:"", reason:"" });
   const [eForm, setEForm] = useState({
     name:ath.name, email:ath.email, password:ath.password,
     plan:ath.plan||"", start_date:ath.start_date||"",
-    sessions_per_week:ath.sessions_per_week||3,
-    type:ath.type||"Online"
+    sessions_per_week:ath.sessions_per_week||3, type:ath.type||"Online"
   });
 
   const expiry = ath.start_date ? calcExpiry(ath.start_date) : ath.expiry;
@@ -198,10 +197,22 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     onRefresh();
   };
 
+  // ── GUARDAR EDICIÓN + copiar a otros atletas ──
   const saveEditWorkout = async () => {
     if (!editW) return;
     const exArr = editW.exercises_text.split("\n").filter(e=>e.trim());
     await supabase.from("workouts").update({ title:editW.title, exercises:exArr, comment:editW.comment }).eq("id",editW.id);
+    // Copiar a atletas adicionales seleccionados
+    if (editW.extra_ids && editW.extra_ids.length > 0) {
+      for (const aid of editW.extra_ids) {
+        const a = athletes.find(x=>x.id===aid);
+        await supabase.from("workouts").insert({ title:editW.title, exercises:exArr, date:editW.date, athlete_id:aid, comment:editW.comment });
+        if (a && (a.tokens||0)>0) {
+          await supabase.from("users").update({ tokens:(a.tokens||0)-1 }).eq("id",aid);
+          await supabase.from("token_history").insert({ athlete_id:aid, amount:-1, reason:`Planificación: ${editW.title} (${editW.date})` });
+        }
+      }
+    }
     setEditW(null);
     onRefresh();
   };
@@ -222,15 +233,10 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const saveEditAthlete = async () => {
     const newExpiry = calcExpiry(eForm.start_date);
     await supabase.from("users").update({
-      name: eForm.name,
-      email: eForm.email,
-      password: eForm.password,
-      plan: eForm.plan || null,
-      start_date: eForm.start_date || null,
-      expiry: newExpiry || null,
-      payment_date: eForm.start_date || null,
-      sessions_per_week: parseInt(eForm.sessions_per_week),
-      type: eForm.type,
+      name:eForm.name, email:eForm.email, password:eForm.password,
+      plan:eForm.plan||null, start_date:eForm.start_date||null,
+      expiry:newExpiry||null, payment_date:eForm.start_date||null,
+      sessions_per_week:parseInt(eForm.sessions_per_week), type:eForm.type,
     }).eq("id", ath.id);
     setShowEdit(false);
     onRefresh();
@@ -242,12 +248,18 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     setWForm({...wForm, athlete_ids:ids});
   };
 
+  const toggleEditAthlete = (id) => {
+    const extra = editW.extra_ids||[];
+    const ids = extra.includes(id) ? extra.filter(x=>x!==id) : [...extra, id];
+    setEditW({...editW, extra_ids:ids});
+  };
+
   return (
     <div style={base.app}>
       <div style={base.topBar}>
         <button onClick={onBack} style={{ background:"none",border:"none",color:RED,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F }}>← Volver</button>
-        <button onClick={()=>setShowEdit(!showEdit)} style={{ background:"none",border:`1px solid #333`,color:"#ccc",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:F,fontSize:13,fontWeight:600 }}>
-          {showEdit?"Cancelar":"✏️ Editar"}
+        <button onClick={()=>setShowEdit(!showEdit)} style={{ background:"none",border:"1px solid #333",color:"#ccc",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:F,fontSize:13,fontWeight:600 }}>
+          {showEdit?"Cerrar":"✏️ Editar perfil"}
         </button>
       </div>
       <div style={base.main}>
@@ -303,7 +315,6 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           <div style={{...base.statCard("#22c55e"),gridColumn:"1/-1"}}><p style={base.h3}>Completados</p><p className="p-green" style={{ fontSize:28,fontWeight:800,lineHeight:1,fontFamily:F }}>{aw.filter(w=>w.done).length}<span style={{ fontSize:13,color:"#666" }}>/{aw.length}</span></p></div>
         </div>
 
-        {/* Tokens */}
         <div style={base.card}>
           <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:showTF?12:0 }}>
             <p style={base.h3}>Tokens</p>
@@ -333,7 +344,6 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           </button>
         </div>
 
-        {/* FORM NUEVO ENTRENAMIENTO */}
         {showWF && <div style={base.card}>
           <h2 style={base.h2}>Nueva planificación</h2>
           <label style={base.label}>Fecha</label>
@@ -379,28 +389,57 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
             : dayW.map(w=>(
               <div key={w.id} style={{ marginBottom:16,paddingBottom:16,borderBottom:"1px solid #1a1a1a" }}>
                 {editW?.id===w.id
-                  ? /* MODO EDITAR */ <div>
+                  ? <div>
                       <label style={base.label}>Título</label>
                       <input style={base.input} value={editW.title} onChange={e=>setEditW({...editW,title:e.target.value})} />
                       <label style={base.label}>Ejercicios (uno por línea)</label>
-                      <textarea style={{...base.input,height:140,resize:"vertical"}} value={editW.exercises_text} onChange={e=>setEditW({...editW,exercises_text:e.target.value})} />
+                      <textarea style={{...base.input,height:160,resize:"vertical"}} value={editW.exercises_text} onChange={e=>setEditW({...editW,exercises_text:e.target.value})} />
                       <label style={base.label}>Nota</label>
                       <input style={base.input} value={editW.comment||""} onChange={e=>setEditW({...editW,comment:e.target.value})} placeholder="Nota para el atleta" />
+                      {/* Copiar a otros atletas al editar */}
+                      {otherAthletes.length > 0 && <>
+                        <label style={base.label}>
+                          Copiar también a
+                          {(editW.extra_ids||[]).length > 0 && <span style={{ color:RED,marginLeft:6 }}>({(editW.extra_ids||[]).length} seleccionados)</span>}
+                        </label>
+                        <div style={{ background:"#0d0d0d",borderRadius:10,padding:"4px 12px",marginBottom:12 }}>
+                          {otherAthletes.map(a=>{
+                            const selected = (editW.extra_ids||[]).includes(a.id);
+                            const tc = a.type==="Online"?RED:a.type==="Presencial"?"#f97316":"#a855f7";
+                            return (
+                              <div key={a.id} onClick={()=>toggleEditAthlete(a.id)} style={{ display:"flex",alignItems:"center",gap:12,padding:"10px 0",cursor:"pointer",borderBottom:"1px solid #1a1a1a" }}>
+                                <div style={{ width:24,height:24,borderRadius:6,border:`2px solid ${selected?RED:"#444"}`,background:selected?RED:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                                  {selected&&<span style={{ color:"#fff",fontSize:14,fontWeight:800 }}>✓</span>}
+                                </div>
+                                <div style={{ width:34,height:34,borderRadius:"50%",background:`${tc}22`,border:`2px solid ${tc}44`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0 }}>
+                                  <span style={{ color:tc,fontWeight:800,fontSize:15,fontFamily:F }}>{a.name.charAt(0)}</span>
+                                </div>
+                                <div style={{ flex:1 }}>
+                                  <p style={{ fontFamily:F,fontSize:15,fontWeight:700,color:selected?"#fff":"#ccc" }}>{a.name}</p>
+                                  <p style={{ fontFamily:F,fontSize:11,color:"#555" }}>{a.plan||"Sin plan"} · {a.type} · {a.tokens||0} tok</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>}
                       <div style={{ display:"flex",gap:8 }}>
-                        <button style={{...base.redBtn,flex:1,padding:"10px"}} onClick={saveEditWorkout}>Guardar</button>
+                        <button style={{...base.redBtn,flex:1,padding:"10px"}} onClick={saveEditWorkout}>
+                          {(editW.extra_ids||[]).length > 0 ? `Guardar y copiar a ${(editW.extra_ids||[]).length} más` : "Guardar"}
+                        </button>
                         <button style={{...base.ghostBtn,flex:1}} onClick={()=>setEditW(null)}>Cancelar</button>
                       </div>
                     </div>
-                  : /* MODO VER */ <>
+                  : <>
                       <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
                         <p className="p-red" style={{ fontWeight:800,fontSize:16,textTransform:"uppercase",fontFamily:F }}>{w.title}</p>
                         <span className={w.done?"p-green":"p-orange"} style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
                       </div>
-                      {/* SIN NUMERACIÓN — texto plano */}
-                      {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:14,padding:"8px 0",borderBottom:"1px solid #111",fontFamily:F }}>{ex}</p>)}
+                      {/* ── SIN LÍNEAS SEPARADORAS ── */}
+                      {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:14,padding:"5px 0",fontFamily:F }}>{ex}</p>)}
                       {w.comment&&<p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
                       <div style={{ display:"flex",gap:8,marginTop:10 }}>
-                        <button style={{...base.ghostBtn,flex:1,fontSize:12}} onClick={()=>setEditW({ id:w.id, title:w.title, exercises_text:(w.exercises||[]).join("\n"), comment:w.comment||"" })}>✏️ Editar</button>
+                        <button style={{...base.ghostBtn,flex:1,fontSize:12}} onClick={()=>setEditW({ id:w.id, date:w.date, title:w.title, exercises_text:(w.exercises||[]).join("\n"), comment:w.comment||"", extra_ids:[] })}>✏️ Editar</button>
                         <button style={{...base.ghostBtn,flex:1,fontSize:12,color:RED,borderColor:`${RED}44`}} onClick={()=>deleteWorkout(w.id)}>🗑 Eliminar</button>
                       </div>
                     </>
@@ -834,7 +873,6 @@ export default function App() {
         </div>
       </div>
       <div style={base.main}>
-
         {(athView==="plan"||athView==="agendar") && <>
           {daysToPayment !== null && daysToPayment <= 5 && (
             <div style={{ background:"#1a0a1a",border:"1px solid #a855f7",borderRadius:12,padding:12,marginBottom:12 }}>
@@ -859,7 +897,8 @@ export default function App() {
                   <p className="p-red" style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",fontFamily:F }}>{w.title}</p>
                   <span className={w.done?"p-green":"p-orange"} style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
                 </div>
-                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:15,padding:"10px 0",borderBottom:"1px solid #111",fontFamily:F }}>{ex}</p>)}
+                {/* SIN LÍNEAS */}
+                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:15,padding:"5px 0",fontFamily:F }}>{ex}</p>)}
                 {w.comment&&<p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
                 {!w.done&&<button className="p-btn" style={{...base.redBtn,marginTop:14}} onClick={()=>markDone(w.id)}>Marcar completado ✓</button>}
               </div>
@@ -932,7 +971,6 @@ export default function App() {
             </div>
           ))}
         </>}
-
       </div>
       <div style={base.bottomNav}>
         {av.map(v=>(
