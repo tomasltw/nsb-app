@@ -32,7 +32,6 @@ const SESSIONS_TOKENS = { 2:8, 3:12, 4:16, 5:20 };
 const getDays = (d) => { if (!d) return 0; return Math.ceil((new Date(d) - new Date()) / 86400000); };
 const getWeekdayFromDate = (dateStr) => WEEKDAY_NAMES[new Date(dateStr+"T12:00:00").getDay()];
 
-// Calcular vencimiento: start_date + 30 días
 const calcExpiry = (startDate) => {
   if (!startDate) return null;
   const d = new Date(startDate+"T12:00:00");
@@ -40,8 +39,7 @@ const calcExpiry = (startDate) => {
   return d.toISOString().split("T")[0];
 };
 
-// Obtener fechas de pago futuras (cada 30 días desde start_date)
-const getPaymentDates = (startDate, monthsAhead = 3) => {
+const getPaymentDates = (startDate, monthsAhead = 6) => {
   if (!startDate) return [];
   const dates = [];
   const base = new Date(startDate+"T12:00:00");
@@ -89,7 +87,6 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick, paymentDates=[],
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month+1, 0).getDate();
   const todayKey = today.toISOString().split("T")[0];
-
   return (
     <div style={{ background:"#161616", border:"1px solid #222", borderRadius:16, padding:16, marginBottom:12 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
@@ -100,15 +97,12 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick, paymentDates=[],
         </div>
         <button onClick={()=>setCalDate(new Date(year,month+1,1))} style={{ background:"none",border:"none",color:"#fff",fontSize:26,cursor:"pointer",padding:"0 8px" }}>›</button>
       </div>
-
-      {/* Leyenda */}
       <div style={{ display:"flex", gap:12, marginBottom:10, flexWrap:"wrap" }}>
         <div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:"50%",background:"#f97316" }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Pendiente</span></div>
         <div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:"50%",background:"#22c55e" }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Completado</span></div>
         <div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:"50%",background:"#a855f7" }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Pago</span></div>
         {expiryDate&&<div style={{ display:"flex",alignItems:"center",gap:4 }}><div style={{ width:8,height:8,borderRadius:2,background:RED }}/><span style={{ fontSize:10,color:"#666",fontFamily:F }}>Vence</span></div>}
       </div>
-
       <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", marginBottom:6 }}>
         {WEEKDAYS.map((d,i)=><div key={i} style={{ textAlign:"center",fontSize:11,fontWeight:700,color:"#555",fontFamily:F }}>{d}</div>)}
       </div>
@@ -119,17 +113,14 @@ function MonthCalendar({ workouts=[], selectedDate, onDayClick, paymentDates=[],
           const key=`${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
           const ws=workouts.filter(w=>w.date===key);
           const isToday=key===todayKey, isSel=key===selectedDate;
-          const isPayment = paymentDates.includes(key);
-          const isExpiry = key===expiryDate;
-          const daysToPayment = isPayment ? getDays(key) : null;
-          const isUrgent = isPayment && daysToPayment !== null && daysToPayment >= 0 && daysToPayment <= 5;
-
+          const isPayment=paymentDates.includes(key);
+          const isExpiry=key===expiryDate;
           return (
-            <div key={day} onClick={()=>onDayClick(key)} style={{ textAlign:"center",padding:"4px 2px",cursor:"pointer",borderRadius:10,background:isSel?RED:isToday?`${RED}22`:isExpiry?`${RED}11`:isPayment?"#a855f711":"transparent", border: isExpiry?`1px solid ${RED}44`:isPayment?"1px solid #a855f744":"1px solid transparent" }}>
+            <div key={day} onClick={()=>onDayClick(key)} style={{ textAlign:"center",padding:"4px 2px",cursor:"pointer",borderRadius:10,background:isSel?RED:isToday?`${RED}22`:isExpiry?`${RED}11`:isPayment?"#a855f711":"transparent",border:isExpiry?`1px solid ${RED}44`:isPayment?"1px solid #a855f744":"1px solid transparent" }}>
               <p style={{ fontSize:15,fontWeight:isToday||isSel||isPayment||isExpiry?800:400,color:isSel?"#fff":isToday?RED:isExpiry?RED:isPayment?"#a855f7":"#fff",fontFamily:F,lineHeight:1,marginBottom:2 }}>{day}</p>
               <div style={{ display:"flex",justifyContent:"center",gap:1,minHeight:6 }}>
                 {ws.slice(0,2).map((w,wi)=><div key={wi} style={{ width:5,height:5,borderRadius:"50%",background:w.done?"#22c55e":"#f97316" }}/>)}
-                {isPayment&&!isSel&&<div style={{ width:5,height:5,borderRadius:"50%",background: isUrgent?RED:"#a855f7" }}/>}
+                {isPayment&&!isSel&&<div style={{ width:5,height:5,borderRadius:"50%",background:"#a855f7" }}/>}
                 {isExpiry&&!isSel&&<div style={{ width:5,height:5,borderRadius:1,background:RED }}/>}
               </div>
             </div>
@@ -166,10 +157,16 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const [selDate, setSelDate] = useState(new Date().toISOString().split("T")[0]);
   const [showWF, setShowWF] = useState(false);
   const [showTF, setShowTF] = useState(false);
-  const [showComment, setShowComment] = useState(null);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editW, setEditW] = useState(null); // workout being edited
   const [wForm, setWForm] = useState({ title:"", exercises:"", date:selDate, athlete_ids:[ath.id], comment:"" });
   const [tForm, setTForm] = useState({ amount:"", reason:"" });
-  const [commentText, setCommentText] = useState("");
+  const [eForm, setEForm] = useState({
+    name:ath.name, email:ath.email, password:ath.password,
+    plan:ath.plan||"", start_date:ath.start_date||"",
+    sessions_per_week:ath.sessions_per_week||3,
+    type:ath.type||"Online"
+  });
 
   const expiry = ath.start_date ? calcExpiry(ath.start_date) : ath.expiry;
   const paymentDates = getPaymentDates(ath.start_date, 6);
@@ -180,10 +177,8 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const typeColor = ath.type==="Online"?RED:ath.type==="Presencial"?"#f97316":"#a855f7";
   const otherAthletes = athletes.filter(a=>a.id!==ath.id);
   const selectedCount = wForm.athlete_ids.filter(id=>id!==ath.id).length;
-
-  // Próximo pago
-  const today = new Date().toISOString().split("T")[0];
-  const nextPayment = paymentDates.find(d=>d>=today);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const nextPayment = paymentDates.find(d=>d>=todayStr);
   const daysToPayment = nextPayment ? getDays(nextPayment) : null;
 
   const createWorkout = async () => {
@@ -203,6 +198,19 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     onRefresh();
   };
 
+  const saveEditWorkout = async () => {
+    if (!editW) return;
+    const exArr = editW.exercises_text.split("\n").filter(e=>e.trim());
+    await supabase.from("workouts").update({ title:editW.title, exercises:exArr, comment:editW.comment }).eq("id",editW.id);
+    setEditW(null);
+    onRefresh();
+  };
+
+  const deleteWorkout = async (id) => {
+    await supabase.from("workouts").delete().eq("id",id);
+    onRefresh();
+  };
+
   const adjustTokens = async () => {
     const amt = parseInt(tForm.amount);
     if (!amt||!tForm.reason) return;
@@ -211,10 +219,21 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     setShowTF(false); setTForm({ amount:"", reason:"" }); onRefresh();
   };
 
-  const addComment = async (wid) => {
-    if (!commentText.trim()) return;
-    await supabase.from("workouts").update({ comment:commentText }).eq("id",wid);
-    setShowComment(null); setCommentText(""); onRefresh();
+  const saveEditAthlete = async () => {
+    const newExpiry = calcExpiry(eForm.start_date);
+    await supabase.from("users").update({
+      name: eForm.name,
+      email: eForm.email,
+      password: eForm.password,
+      plan: eForm.plan || null,
+      start_date: eForm.start_date || null,
+      expiry: newExpiry || null,
+      payment_date: eForm.start_date || null,
+      sessions_per_week: parseInt(eForm.sessions_per_week),
+      type: eForm.type,
+    }).eq("id", ath.id);
+    setShowEdit(false);
+    onRefresh();
   };
 
   const toggleAthlete = (id) => {
@@ -227,9 +246,40 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     <div style={base.app}>
       <div style={base.topBar}>
         <button onClick={onBack} style={{ background:"none",border:"none",color:RED,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F }}>← Volver</button>
-        <span style={{ color:"#666",fontSize:13,fontFamily:F }}>{user.name}</span>
+        <button onClick={()=>setShowEdit(!showEdit)} style={{ background:"none",border:`1px solid #333`,color:"#ccc",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:F,fontSize:13,fontWeight:600 }}>
+          {showEdit?"Cancelar":"✏️ Editar"}
+        </button>
       </div>
       <div style={base.main}>
+
+        {/* EDITAR PERFIL */}
+        {showEdit && <div style={base.card}>
+          <h2 style={base.h2}>Editar perfil</h2>
+          {[["Nombre","name","text"],["Email","email","email"],["Contraseña","password","text"]].map(([l,k,t])=>(
+            <div key={k}>
+              <label style={base.label}>{l}</label>
+              <input style={base.input} type={t} value={eForm[k]} onChange={e=>setEForm(f=>({...f,[k]:e.target.value}))} />
+            </div>
+          ))}
+          <label style={base.label}>Plan</label>
+          <input style={base.input} value={eForm.plan} onChange={e=>setEForm(f=>({...f,plan:e.target.value}))} placeholder="Plan" />
+          <label style={base.label}>Fecha de inicio / pago</label>
+          <input style={base.input} type="date" value={eForm.start_date} onChange={e=>setEForm(f=>({...f,start_date:e.target.value}))} />
+          {eForm.start_date && <p style={{ color:"#a855f7",fontSize:13,fontFamily:F,marginBottom:12,marginTop:-8 }}>💜 Vence el {calcExpiry(eForm.start_date)}</p>}
+          <label style={base.label}>Sesiones por semana</label>
+          <select style={base.input} value={eForm.sessions_per_week} onChange={e=>setEForm(f=>({...f,sessions_per_week:parseInt(e.target.value)}))}>
+            <option value={2}>2x semana — 8 tokens/mes</option>
+            <option value={3}>3x semana — 12 tokens/mes</option>
+            <option value={4}>4x semana — 16 tokens/mes</option>
+            <option value={5}>5x semana — 20 tokens/mes</option>
+          </select>
+          <label style={base.label}>Tipo</label>
+          <select style={base.input} value={eForm.type} onChange={e=>setEForm(f=>({...f,type:e.target.value}))}>
+            <option>Online</option><option>Presencial</option><option>Mixto</option>
+          </select>
+          <button style={base.redBtn} onClick={saveEditAthlete}>Guardar cambios</button>
+        </div>}
+
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:16 }}>
           <div>
             <h1 style={{...base.h1,marginBottom:4}}>{ath.name}</h1>
@@ -239,10 +289,9 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           <span className={d<15?"p-red":d<30?"p-orange":"p-green"} style={tag(d<15?"red":d<30?"orange":"green")}>{d}d</span>
         </div>
 
-        {/* Alerta pago próximo */}
         {daysToPayment !== null && daysToPayment <= 5 && (
-          <div style={{ background:"#1a0a1a", border:"1px solid #a855f7", borderRadius:12, padding:12, marginBottom:12 }}>
-            <p className="p-purple" style={{ fontWeight:700, fontSize:14, fontFamily:F }}>💜 Pago en {daysToPayment} días — {nextPayment}</p>
+          <div style={{ background:"#1a0a1a",border:"1px solid #a855f7",borderRadius:12,padding:12,marginBottom:12 }}>
+            <p className="p-purple" style={{ fontWeight:700,fontSize:14,fontFamily:F }}>💜 Pago en {daysToPayment} días — {nextPayment}</p>
           </div>
         )}
 
@@ -279,11 +328,12 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
 
         <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8 }}>
           <p style={{ fontWeight:700,fontSize:14,color:"#999",fontFamily:F }}>{selDate} · {getWeekdayFromDate(selDate)}</p>
-          <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>{ setWForm({title:"",exercises:"",date:selDate,athlete_ids:[ath.id],comment:""}); setShowWF(!showWF); }}>
+          <button style={{...base.redBtn,width:"auto",padding:"8px 14px",fontSize:12}} onClick={()=>{ setWForm({title:"",exercises:"",date:selDate,athlete_ids:[ath.id],comment:""}); setShowWF(!showWF); setEditW(null); }}>
             {showWF?"Cerrar":"+ Agregar"}
           </button>
         </div>
 
+        {/* FORM NUEVO ENTRENAMIENTO */}
         {showWF && <div style={base.card}>
           <h2 style={base.h2}>Nueva planificación</h2>
           <label style={base.label}>Fecha</label>
@@ -291,7 +341,7 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           <label style={base.label}>Título</label>
           <input style={base.input} value={wForm.title} onChange={e=>setWForm({...wForm,title:e.target.value})} placeholder="Ej: Upper Body Strength" />
           <label style={base.label}>Ejercicios (uno por línea)</label>
-          <textarea style={{...base.input,height:140,resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"Press de banca 4x8\nRemo con barra 4x8"} />
+          <textarea style={{...base.input,height:140,resize:"vertical"}} value={wForm.exercises} onChange={e=>setWForm({...wForm,exercises:e.target.value})} placeholder={"a) Activación y movilidad\nb) 5' aeróbico libre\nc) Press de banca 4x8"} />
           <label style={base.label}>Nota para el atleta</label>
           <input style={base.input} value={wForm.comment} onChange={e=>setWForm({...wForm,comment:e.target.value})} placeholder="Ej: Enfocarse en técnica" />
           {otherAthletes.length > 0 && <>
@@ -322,28 +372,38 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
           </button>
         </div>}
 
+        {/* ENTRENAMIENTOS DEL DÍA */}
         <div style={base.card}>
           {dayW.length===0
             ? <p style={{ color:"#444",textAlign:"center",padding:16,fontFamily:F }}>Sin planificación para este día.</p>
             : dayW.map(w=>(
               <div key={w.id} style={{ marginBottom:16,paddingBottom:16,borderBottom:"1px solid #1a1a1a" }}>
-                <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
-                  <p className="p-red" style={{ fontWeight:800,fontSize:16,textTransform:"uppercase",fontFamily:F }}>{w.title}</p>
-                  <span className={w.done?"p-green":"p-orange"} style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
-                </div>
-                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:14,padding:"8px 0",borderBottom:"1px solid #111",fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
-                {w.comment&&<p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
-                {showComment===w.id
-                  ? <div style={{ marginTop:8 }}>
-                      <input style={base.input} placeholder="Agregar nota..." value={commentText} onChange={e=>setCommentText(e.target.value)} />
+                {editW?.id===w.id
+                  ? /* MODO EDITAR */ <div>
+                      <label style={base.label}>Título</label>
+                      <input style={base.input} value={editW.title} onChange={e=>setEditW({...editW,title:e.target.value})} />
+                      <label style={base.label}>Ejercicios (uno por línea)</label>
+                      <textarea style={{...base.input,height:140,resize:"vertical"}} value={editW.exercises_text} onChange={e=>setEditW({...editW,exercises_text:e.target.value})} />
+                      <label style={base.label}>Nota</label>
+                      <input style={base.input} value={editW.comment||""} onChange={e=>setEditW({...editW,comment:e.target.value})} placeholder="Nota para el atleta" />
                       <div style={{ display:"flex",gap:8 }}>
-                        <button style={{...base.redBtn,padding:"10px"}} onClick={()=>addComment(w.id)}>Guardar</button>
-                        <button style={{...base.ghostBtn,flex:1}} onClick={()=>setShowComment(null)}>Cancelar</button>
+                        <button style={{...base.redBtn,flex:1,padding:"10px"}} onClick={saveEditWorkout}>Guardar</button>
+                        <button style={{...base.ghostBtn,flex:1}} onClick={()=>setEditW(null)}>Cancelar</button>
                       </div>
                     </div>
-                  : <button style={{...base.ghostBtn,marginTop:8,fontSize:12,width:"100%"}} onClick={()=>{ setShowComment(w.id); setCommentText(w.comment||""); }}>
-                      {w.comment?"Editar nota":"+ Agregar nota"}
-                    </button>
+                  : /* MODO VER */ <>
+                      <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10 }}>
+                        <p className="p-red" style={{ fontWeight:800,fontSize:16,textTransform:"uppercase",fontFamily:F }}>{w.title}</p>
+                        <span className={w.done?"p-green":"p-orange"} style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
+                      </div>
+                      {/* SIN NUMERACIÓN — texto plano */}
+                      {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:14,padding:"8px 0",borderBottom:"1px solid #111",fontFamily:F }}>{ex}</p>)}
+                      {w.comment&&<p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
+                      <div style={{ display:"flex",gap:8,marginTop:10 }}>
+                        <button style={{...base.ghostBtn,flex:1,fontSize:12}} onClick={()=>setEditW({ id:w.id, title:w.title, exercises_text:(w.exercises||[]).join("\n"), comment:w.comment||"" })}>✏️ Editar</button>
+                        <button style={{...base.ghostBtn,flex:1,fontSize:12,color:RED,borderColor:`${RED}44`}} onClick={()=>deleteWorkout(w.id)}>🗑 Eliminar</button>
+                      </div>
+                    </>
                 }
               </div>
             ))
@@ -423,7 +483,6 @@ function PlanView({ plan, athletes, onSelectAthlete, onBack }) {
 function FormAtleta({ aForm, setAForm, onSubmit, esPresencial }) {
   const inputStyle = { background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" };
   const labelStyle = { fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F };
-
   return (
     <div style={{ background:"#161616",border:"1px solid #222",borderRadius:14,padding:16,marginBottom:12 }}>
       <h2 style={{ fontSize:20,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12,fontFamily:F }}>
@@ -441,11 +500,7 @@ function FormAtleta({ aForm, setAForm, onSubmit, esPresencial }) {
       }
       <label style={labelStyle}>Fecha de inicio / pago</label>
       <input style={inputStyle} type="date" value={aForm.start_date} onChange={e=>setAForm(f=>({...f,start_date:e.target.value}))} />
-      {aForm.start_date && (
-        <p style={{ color:"#a855f7",fontSize:13,fontFamily:F,marginBottom:12,marginTop:-8 }}>
-          💜 Vence el {calcExpiry(aForm.start_date)} · Próximo pago: {calcExpiry(aForm.start_date)}
-        </p>
-      )}
+      {aForm.start_date && <p style={{ color:"#a855f7",fontSize:13,fontFamily:F,marginBottom:12,marginTop:-8 }}>💜 Vence el {calcExpiry(aForm.start_date)}</p>}
       <label style={labelStyle}>Sesiones por semana</label>
       <select style={inputStyle} value={aForm.sessions_per_week} onChange={e=>setAForm(f=>({...f,sessions_per_week:parseInt(e.target.value)}))}>
         <option value={2}>2x semana — 8 tokens/mes</option>
@@ -522,17 +577,11 @@ export default function App() {
     const tipo = aForm.tipo_mixto ? "Mixto" : esPres ? "Presencial" : "Online";
     const expiry = calcExpiry(aForm.start_date);
     const data = {
-      name: aForm.name,
-      email: aForm.email,
-      password: aForm.password,
-      plan: aForm.plan || null,
-      start_date: aForm.start_date || null,
-      expiry: expiry || null,
-      payment_date: aForm.start_date || null,
-      sessions_per_week: parseInt(aForm.sessions_per_week),
-      role: "athlete",
-      tokens,
-      type: tipo,
+      name:aForm.name, email:aForm.email, password:aForm.password,
+      plan:aForm.plan||null, start_date:aForm.start_date||null,
+      expiry:expiry||null, payment_date:aForm.start_date||null,
+      sessions_per_week:parseInt(aForm.sessions_per_week),
+      role:"athlete", tokens, type:tipo,
     };
     const { error } = await supabase.from("users").insert(data);
     if (error) { console.error("Error:", error.message); return; }
@@ -589,6 +638,7 @@ export default function App() {
     const noPlanOnline = onlineAthletes.filter(a=>!NSB_PLANS.includes(a.plan));
     const presWeekday = getWeekdayFromDate(presDate);
     const filteredSchedules = schedules.filter(sch=>sch.day===presWeekday);
+    const todayStr = new Date().toISOString().split("T")[0];
 
     return (
       <div style={base.app}>
@@ -610,15 +660,11 @@ export default function App() {
               <div style={base.statCard("#22c55e")}><p style={base.h3}>Planes</p><p className="p-green" style={{ fontSize:40,fontWeight:800,lineHeight:1,fontFamily:F }}>{workouts.length}</p></div>
               <div style={base.statCard("#a855f7")}><p style={base.h3}>Mensajes</p><p className="p-purple" style={{ fontSize:40,fontWeight:800,lineHeight:1,fontFamily:F }}>{messages.length}</p></div>
             </div>
-            {/* Alertas de pago próximo */}
-            {athletes.filter(a=>{ const pd = getPaymentDates(a.start_date,1); const next = pd.find(d=>d>=new Date().toISOString().split("T")[0]); return next && getDays(next)<=5 && getDays(next)>=0; }).map(a=>{
-              const pd = getPaymentDates(a.start_date,1);
-              const next = pd.find(d=>d>=new Date().toISOString().split("T")[0]);
-              return (
-                <div key={a.id} style={{ background:"#1a0a1a",border:"1px solid #a855f7",borderRadius:12,padding:12,marginBottom:8 }}>
-                  <p className="p-purple" style={{ fontWeight:700,fontSize:14,fontFamily:F }}>💜 {a.name} — pago en {getDays(next)} días ({next})</p>
-                </div>
-              );
+            {athletes.filter(a=>{ const pd=getPaymentDates(a.start_date,1); const next=pd.find(d=>d>=todayStr); return next&&getDays(next)<=5&&getDays(next)>=0; }).map(a=>{
+              const pd=getPaymentDates(a.start_date,1); const next=pd.find(d=>d>=todayStr);
+              return <div key={a.id} style={{ background:"#1a0a1a",border:"1px solid #a855f7",borderRadius:12,padding:12,marginBottom:8 }}>
+                <p className="p-purple" style={{ fontWeight:700,fontSize:14,fontFamily:F }}>💜 {a.name} — pago en {getDays(next)} días ({next})</p>
+              </div>;
             })}
             <div style={base.card}>
               <h2 style={base.h2}>Atletas recientes</h2>
@@ -732,7 +778,7 @@ export default function App() {
               { title:"Presencial",color:RED,cls:"p-red",items:["Las clases agendadas y no asistidas son recuperables, hasta 2 por mes.","Las cancelaciones deben realizarse con 24 horas de anticipación.","Si no cancelas a tiempo, la clase se descuenta del plan.","Los horarios se reservan con antelación desde la app.","El plan mensual no se congela ni se extiende por inasistencias."]},
               { title:"Online",color:"#f97316",cls:"p-orange",items:["Las planificaciones se suben semanalmente a la app.","Tienes 24 horas para consultar dudas sobre tu entrenamiento.","El seguimiento se realiza a través de la app cada semana.","Los materiales de apoyo se envían por mensaje interno."]},
               { title:"Mixto",color:"#a855f7",cls:"p-purple",items:["Combina sesiones presenciales y planificación online.","Las políticas presenciales aplican para las clases en persona.","La parte online sigue las políticas del plan online."]},
-              { title:"General",color:"#22c55e",cls:"p-green",items:["El pago es mensual y se renueva cada 30 días desde la fecha de inicio.","El plan vence automáticamente al cumplirse los 30 días.","Cada sesión subida descuenta 1 token del plan.","Los tokens se recargan al renovar el período."]}
+              { title:"General",color:"#22c55e",cls:"p-green",items:["El pago se renueva cada 30 días desde la fecha de inicio.","El plan vence automáticamente al cumplirse los 30 días.","Cada sesión subida descuenta 1 token del plan.","Los tokens se recargan al renovar el período."]}
             ].map(sec=>(
               <div key={sec.title} style={{...base.card,borderLeft:`3px solid ${sec.color}`}}>
                 <p className={sec.cls} style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",marginBottom:12,fontFamily:F }}>{sec.title}</p>
@@ -813,7 +859,7 @@ export default function App() {
                   <p className="p-red" style={{ fontWeight:800,fontSize:18,textTransform:"uppercase",fontFamily:F }}>{w.title}</p>
                   <span className={w.done?"p-green":"p-orange"} style={tag(w.done?"green":"orange")}>{w.done?"✓ Listo":"Pendiente"}</span>
                 </div>
-                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:15,padding:"10px 0",borderBottom:"1px solid #111",fontFamily:F }}>{String(i+1).padStart(2,"0")}. {ex}</p>)}
+                {w.exercises?.map((ex,i)=><p key={i} style={{ color:"#bbb",fontSize:15,padding:"10px 0",borderBottom:"1px solid #111",fontFamily:F }}>{ex}</p>)}
                 {w.comment&&<p style={{ color:"#f97316",fontSize:13,marginTop:8,fontStyle:"italic",fontFamily:F }}>💬 {w.comment}</p>}
                 {!w.done&&<button className="p-btn" style={{...base.redBtn,marginTop:14}} onClick={()=>markDone(w.id)}>Marcar completado ✓</button>}
               </div>
