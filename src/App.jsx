@@ -28,6 +28,7 @@ const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto
 const WEEKDAYS = ["D","L","M","M","J","V","S"];
 const DAYS_ES = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
 const SESSIONS_TOKENS = { 2:8, 3:12, 4:16, 5:20 };
+const EQUIPMENT_OPTIONS = ["Box CrossFit completo","Gym completo","Home gym con barra","Home gym básico","Sin equipamiento","Otro"];
 
 const todayLocal = () => {
   const d = new Date();
@@ -40,14 +41,12 @@ const getDays = (d) => {
   return Math.ceil((target-today)/86400000);
 };
 const getWeekdayFromDate = (dateStr) => WEEKDAY_NAMES[new Date(dateStr+"T12:00:00").getDay()];
-
 const calcExpiry = (startDate) => {
   if (!startDate) return null;
   const d = new Date(startDate+"T12:00:00");
   d.setDate(d.getDate()+30);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 };
-
 const getPaymentDates = (startDate, monthsAhead=6) => {
   if (!startDate) return [];
   const dates = [];
@@ -59,15 +58,33 @@ const getPaymentDates = (startDate, monthsAhead=6) => {
   }
   return dates;
 };
-
 const getExercisesText = (w) => {
   if (w.exercises_raw) return w.exercises_raw;
   if (w.exercises && Array.isArray(w.exercises)) return w.exercises.join("\n");
   return "";
 };
+const formatTime = (secs) => {
+  if (!secs) return "—";
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+};
+const parseTime = (str) => {
+  if (!str || !str.trim()) return null;
+  const parts = str.split(":").map(Number);
+  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) return parts[0] * 60 + parts[1];
+  const n = parseInt(str);
+  return isNaN(n) ? null : n * 60;
+};
 
 const AFORM_ONLINE = { name:"",email:"",password:"",plan:NSB_PLANS[0],start_date:"",tipo_mixto:false,sessions_per_week:3 };
 const AFORM_PRES   = { name:"",email:"",password:"",plan:"",start_date:"",tipo_mixto:false,sessions_per_week:3 };
+const EMPTY_QFORM  = {
+  training_days_per_week:3, equipment:"", has_running_space:false, goals:"",
+  snatch:"", clean_and_jerk:"", clean:"", front_squat:"", back_squat:"",
+  deadlift:"", overhead_squat:"", pull_ups:"", muscle_ups:"", handstand_pushups:"",
+  time_5km:"", time_10km:"", time_21km:"", max_pushups:"", notes:""
+};
 
 const tag = (c) => ({
   display:"inline-block", padding:"4px 10px", borderRadius:6, fontSize:11,
@@ -171,6 +188,7 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const [showWF, setShowWF] = useState(false);
   const [showTF, setShowTF] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [editW, setEditW] = useState(null);
   const [wForm, setWForm] = useState({ title:"", exercises:"", date:todayLocal(), athlete_ids:[ath.id], comment:"" });
   const [tForm, setTForm] = useState({ amount:"", reason:"" });
@@ -179,6 +197,11 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     plan:ath.plan||"", start_date:ath.start_date||"",
     sessions_per_week:ath.sessions_per_week||3, type:ath.type||"Online"
   });
+  const [athProfile, setAthProfile] = useState(null);
+
+  useEffect(()=>{
+    supabase.from("athlete_profile").select("*").eq("athlete_id",ath.id).single().then(({data})=>{ if (data) setAthProfile(data); });
+  },[ath.id]);
 
   const expiry=ath.start_date?calcExpiry(ath.start_date):ath.expiry;
   const paymentDates=getPaymentDates(ath.start_date,6);
@@ -191,7 +214,6 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
   const selectedCount=wForm.athlete_ids.filter(id=>id!==ath.id).length;
   const today=todayLocal();
   const nextPayment=paymentDates.find(d=>d>=today);
-  const daysToPayment=nextPayment?getDays(nextPayment):null;
 
   const createWorkout=async()=>{
     if (!wForm.title.trim()) return;
@@ -260,11 +282,57 @@ function AthleteProfile({ ath, workouts, athletes, tokenHistory, onBack, onRefre
     <div style={base.app}>
       <div style={base.topBar}>
         <button onClick={onBack} style={{ background:"none",border:"none",color:RED,fontSize:16,fontWeight:700,cursor:"pointer",fontFamily:F }}>← Volver</button>
-        <button onClick={()=>setShowEdit(!showEdit)} style={{ background:"none",border:"1px solid #333",color:"#ccc",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:F,fontSize:13,fontWeight:600 }}>
-          {showEdit?"Cerrar":"✏️ Editar perfil"}
-        </button>
+        <div style={{ display:"flex",gap:8 }}>
+          <button onClick={()=>{ setShowProfile(!showProfile); setShowEdit(false); }} style={{ background:"none",border:"1px solid #333",color:"#ccc",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:F,fontSize:13,fontWeight:600 }}>
+            {showProfile?"Cerrar":"👤 Perfil"}
+          </button>
+          <button onClick={()=>{ setShowEdit(!showEdit); setShowProfile(false); }} style={{ background:"none",border:"1px solid #333",color:"#ccc",padding:"6px 14px",borderRadius:8,cursor:"pointer",fontFamily:F,fontSize:13,fontWeight:600 }}>
+            {showEdit?"Cerrar":"✏️ Editar"}
+          </button>
+        </div>
       </div>
       <div style={base.main}>
+
+        {/* Perfil del atleta (cuestionario visto por coach) */}
+        {showProfile&&<div style={base.card}>
+          <h2 style={base.h2}>Perfil de {ath.name}</h2>
+          {!athProfile?<p style={{ color:"#444",fontFamily:F }}>El atleta aún no ha completado su perfil.</p>:<>
+            <div style={base.grid2}>
+              <div style={{ background:"#0d0d0d",borderRadius:8,padding:10 }}><p style={base.h3}>Días/semana</p><p style={{ fontWeight:800,fontSize:20,color:RED,fontFamily:F }}>{athProfile.training_days_per_week}</p></div>
+              <div style={{ background:"#0d0d0d",borderRadius:8,padding:10 }}><p style={base.h3}>Lugar</p><p style={{ fontWeight:600,fontSize:13,fontFamily:F }}>{athProfile.equipment||"—"}</p></div>
+              <div style={{ background:"#0d0d0d",borderRadius:8,padding:10,gridColumn:"1/-1" }}><p style={base.h3}>Objetivos</p><p style={{ fontWeight:600,fontSize:14,fontFamily:F }}>{athProfile.goals||"—"}</p></div>
+            </div>
+            <p style={{ ...base.h3,marginTop:12 }}>Halterofilia (kg)</p>
+            <div style={base.grid2}>
+              {[["Snatch","snatch"],["C&J","clean_and_jerk"],["Clean","clean"],["Frontal","front_squat"],["Trasera","back_squat"],["Peso Muerto","deadlift"],["OHS","overhead_squat"]].map(([l,k])=>(
+                <div key={k} style={{ background:"#0d0d0d",borderRadius:8,padding:10 }}>
+                  <p style={base.h3}>{l}</p>
+                  <p style={{ fontWeight:800,fontSize:16,color:athProfile[k]?RED:"#333",fontFamily:F }}>{athProfile[k]?`${athProfile[k]}kg`:"—"}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ ...base.h3,marginTop:12 }}>Gimnásticos</p>
+            <div style={base.grid2}>
+              {[["Pull-ups","pull_ups"],["Muscle-ups","muscle_ups"],["HSPU","handstand_pushups"],["Push-ups","max_pushups"]].map(([l,k])=>(
+                <div key={k} style={{ background:"#0d0d0d",borderRadius:8,padding:10 }}>
+                  <p style={base.h3}>{l}</p>
+                  <p style={{ fontWeight:800,fontSize:16,color:athProfile[k]?RED:"#333",fontFamily:F }}>{athProfile[k]?`${athProfile[k]} reps`:"—"}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ ...base.h3,marginTop:12 }}>Running</p>
+            <div style={base.grid2}>
+              {[["5km","time_5km"],["10km","time_10km"],["21km","time_21km"]].map(([l,k])=>(
+                <div key={k} style={{ background:"#0d0d0d",borderRadius:8,padding:10 }}>
+                  <p style={base.h3}>{l}</p>
+                  <p style={{ fontWeight:800,fontSize:16,color:athProfile[k]?RED:"#333",fontFamily:F }}>{formatTime(athProfile[k])}</p>
+                </div>
+              ))}
+            </div>
+            {athProfile.notes&&<><p style={{ ...base.h3,marginTop:12 }}>Notas</p><p style={{ color:"#bbb",fontSize:14,fontFamily:F }}>{athProfile.notes}</p></>}
+          </>}
+        </div>}
+
         {showEdit&&<div style={base.card}>
           <h2 style={base.h2}>Editar perfil</h2>
           {[["Nombre","name","text"],["Email","email","email"],["Contraseña","password","text"]].map(([l,k,t])=>(
@@ -508,26 +576,24 @@ function PlanView({ plan, athletes, onSelectAthlete, onBack }) {
 }
 
 function FormAtleta({ aForm, setAForm, onSubmit, esPresencial }) {
-  const inputStyle={ background:"#1a1a1a",border:"1px solid #333",borderRadius:10,padding:"14px 16px",color:"#fff",fontFamily:F,fontSize:16,width:"100%",boxSizing:"border-box",outline:"none",marginBottom:12,display:"block" };
-  const labelStyle={ fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.12em",color:"#666",marginBottom:6,display:"block",fontFamily:F };
   return (
     <div style={{ background:"#161616",border:"1px solid #222",borderRadius:14,padding:16,marginBottom:12 }}>
       <h2 style={{ fontSize:20,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",marginBottom:12,fontFamily:F }}>Nuevo atleta {esPresencial?"presencial":"online"}</h2>
-      <label style={labelStyle}>Nombre</label>
-      <input style={inputStyle} type="text" value={aForm.name} onChange={e=>setAForm(f=>({...f,name:e.target.value}))} placeholder="Nombre completo" />
-      <label style={labelStyle}>Email</label>
-      <input style={inputStyle} type="email" value={aForm.email} onChange={e=>setAForm(f=>({...f,email:e.target.value}))} placeholder="email@ejemplo.com" />
-      <label style={labelStyle}>Contraseña</label>
-      <input style={inputStyle} type="text" value={aForm.password} onChange={e=>setAForm(f=>({...f,password:e.target.value}))} placeholder="Contraseña" />
+      <label style={base.label}>Nombre</label>
+      <input style={base.input} type="text" value={aForm.name} onChange={e=>setAForm(f=>({...f,name:e.target.value}))} placeholder="Nombre completo" />
+      <label style={base.label}>Email</label>
+      <input style={base.input} type="email" value={aForm.email} onChange={e=>setAForm(f=>({...f,email:e.target.value}))} placeholder="email@ejemplo.com" />
+      <label style={base.label}>Contraseña</label>
+      <input style={base.input} type="text" value={aForm.password} onChange={e=>setAForm(f=>({...f,password:e.target.value}))} placeholder="Contraseña" />
       {esPresencial
-        ?<><label style={labelStyle}>Plan (opcional)</label><input style={inputStyle} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))} placeholder="Ej: NSB Presencial" /></>
-        :<><label style={labelStyle}>Plan NSB</label><select style={inputStyle} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))}>{NSB_PLANS.map(p=><option key={p}>{p}</option>)}</select></>
+        ?<><label style={base.label}>Plan (opcional)</label><input style={base.input} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))} placeholder="Ej: NSB Presencial" /></>
+        :<><label style={base.label}>Plan NSB</label><select style={base.input} value={aForm.plan} onChange={e=>setAForm(f=>({...f,plan:e.target.value}))}>{NSB_PLANS.map(p=><option key={p}>{p}</option>)}</select></>
       }
-      <label style={labelStyle}>Fecha de inicio / pago</label>
-      <input style={inputStyle} type="date" value={aForm.start_date} onChange={e=>setAForm(f=>({...f,start_date:e.target.value}))} />
+      <label style={base.label}>Fecha de inicio / pago</label>
+      <input style={base.input} type="date" value={aForm.start_date} onChange={e=>setAForm(f=>({...f,start_date:e.target.value}))} />
       {aForm.start_date&&<p style={{ color:"#a855f7",fontSize:13,fontFamily:F,marginBottom:12,marginTop:-8 }}>💜 Vence el {calcExpiry(aForm.start_date)}</p>}
-      <label style={labelStyle}>Sesiones por semana</label>
-      <select style={inputStyle} value={aForm.sessions_per_week} onChange={e=>setAForm(f=>({...f,sessions_per_week:parseInt(e.target.value)}))}>
+      <label style={base.label}>Sesiones por semana</label>
+      <select style={base.input} value={aForm.sessions_per_week} onChange={e=>setAForm(f=>({...f,sessions_per_week:parseInt(e.target.value)}))}>
         <option value={2}>2x semana — 8 tokens/mes</option>
         <option value={3}>3x semana — 12 tokens/mes</option>
         <option value={4}>4x semana — 16 tokens/mes</option>
@@ -540,6 +606,135 @@ function FormAtleta({ aForm, setAForm, onSubmit, esPresencial }) {
         <p style={{ fontFamily:F,fontSize:14,color:"#ccc" }}>Es atleta Mixto (presencial + online)</p>
       </div>
       <button style={{ background:RED,color:"#fff",border:"none",padding:"14px 24px",borderRadius:10,cursor:"pointer",fontFamily:F,fontSize:15,fontWeight:700,letterSpacing:"0.1em",textTransform:"uppercase",width:"100%",display:"block" }} onClick={onSubmit}>Crear atleta</button>
+    </div>
+  );
+}
+
+// ── CUESTIONARIO ATLETA ──
+function Questionnaire({ user, existingProfile, onSave, onSkip }) {
+  const [qForm, setQForm] = useState(existingProfile ? {
+    training_days_per_week: existingProfile.training_days_per_week||3,
+    equipment: existingProfile.equipment||"",
+    has_running_space: existingProfile.has_running_space||false,
+    goals: existingProfile.goals||"",
+    snatch: existingProfile.snatch||"",
+    clean_and_jerk: existingProfile.clean_and_jerk||"",
+    clean: existingProfile.clean||"",
+    front_squat: existingProfile.front_squat||"",
+    back_squat: existingProfile.back_squat||"",
+    deadlift: existingProfile.deadlift||"",
+    overhead_squat: existingProfile.overhead_squat||"",
+    pull_ups: existingProfile.pull_ups||"",
+    muscle_ups: existingProfile.muscle_ups||"",
+    handstand_pushups: existingProfile.handstand_pushups||"",
+    time_5km: formatTime(existingProfile.time_5km),
+    time_10km: formatTime(existingProfile.time_10km),
+    time_21km: formatTime(existingProfile.time_21km),
+    max_pushups: existingProfile.max_pushups||"",
+    notes: existingProfile.notes||""
+  } : {...EMPTY_QFORM});
+
+  const save = async () => {
+    const payload = {
+      athlete_id: user.id,
+      training_days_per_week: parseInt(qForm.training_days_per_week)||3,
+      equipment: qForm.equipment,
+      has_running_space: qForm.has_running_space,
+      goals: qForm.goals,
+      snatch: parseInt(qForm.snatch)||null,
+      clean_and_jerk: parseInt(qForm.clean_and_jerk)||null,
+      clean: parseInt(qForm.clean)||null,
+      front_squat: parseInt(qForm.front_squat)||null,
+      back_squat: parseInt(qForm.back_squat)||null,
+      deadlift: parseInt(qForm.deadlift)||null,
+      overhead_squat: parseInt(qForm.overhead_squat)||null,
+      pull_ups: parseInt(qForm.pull_ups)||null,
+      muscle_ups: parseInt(qForm.muscle_ups)||null,
+      handstand_pushups: parseInt(qForm.handstand_pushups)||null,
+      time_5km: parseTime(qForm.time_5km),
+      time_10km: parseTime(qForm.time_10km),
+      time_21km: parseTime(qForm.time_21km),
+      max_pushups: parseInt(qForm.max_pushups)||null,
+      notes: qForm.notes,
+      updated_at: new Date().toISOString()
+    };
+    if (existingProfile) {
+      await supabase.from("athlete_profile").update(payload).eq("athlete_id", user.id);
+    } else {
+      await supabase.from("athlete_profile").insert(payload);
+    }
+    onSave();
+  };
+
+  return (
+    <div style={{...base.app, paddingBottom:20}}>
+      <div style={base.topBar}>
+        <img src="/nsb_sin_fondo.png" alt="NSB" style={{ height:32 }} />
+        {onSkip&&<button style={{...base.ghostBtn,padding:"6px 12px",fontSize:11}} onClick={onSkip}>Omitir</button>}
+      </div>
+      <div style={base.main}>
+        <h1 style={{...base.h1,marginBottom:4}}>Mi Perfil</h1>
+        <p style={{ color:"#666",fontSize:14,marginBottom:20,fontFamily:F }}>Completa tu información para que tu coach pueda planificarte mejor.</p>
+
+        <div style={base.card}>
+          <h2 style={base.h2}>General</h2>
+          <label style={base.label}>¿Cuántos días entrenas por semana?</label>
+          <select style={base.input} value={qForm.training_days_per_week} onChange={e=>setQForm({...qForm,training_days_per_week:e.target.value})}>
+            {[2,3,4,5,6].map(n=><option key={n} value={n}>{n} días</option>)}
+          </select>
+          <label style={base.label}>¿Dónde entrenas?</label>
+          <select style={base.input} value={qForm.equipment} onChange={e=>setQForm({...qForm,equipment:e.target.value})}>
+            <option value="">Seleccionar...</option>
+            {EQUIPMENT_OPTIONS.map(o=><option key={o} value={o}>{o}</option>)}
+          </select>
+          <label style={base.label}>¿Tienes espacio para correr?</label>
+          <select style={base.input} value={qForm.has_running_space?"si":"no"} onChange={e=>setQForm({...qForm,has_running_space:e.target.value==="si"})}>
+            <option value="si">Sí</option>
+            <option value="no">No</option>
+          </select>
+          <label style={base.label}>Objetivos</label>
+          <textarea style={{...base.input,height:80,resize:"vertical"}} placeholder="¿Qué quieres lograr con tu entrenamiento?" value={qForm.goals} onChange={e=>setQForm({...qForm,goals:e.target.value})} />
+        </div>
+
+        <div style={base.card}>
+          <h2 style={base.h2}>Halterofilia</h2>
+          <p style={{ color:"#666",fontSize:13,marginBottom:12,fontFamily:F }}>Pesos máximos en kg. Deja en blanco si no aplica.</p>
+          {[["Arranque (Snatch)","snatch"],["Envión (Clean & Jerk)","clean_and_jerk"],["Cargada (Clean)","clean"],["Sentadilla Frontal","front_squat"],["Sentadilla Trasera","back_squat"],["Peso Muerto","deadlift"],["Sentadilla Overhead","overhead_squat"]].map(([l,k])=>(
+            <div key={k}>
+              <label style={base.label}>{l} (kg)</label>
+              <input style={base.input} type="number" placeholder="kg" value={qForm[k]} onChange={e=>setQForm({...qForm,[k]:e.target.value})} />
+            </div>
+          ))}
+        </div>
+
+        <div style={base.card}>
+          <h2 style={base.h2}>Gimnásticos CrossFit</h2>
+          {[["Pull-ups máx. (reps)","pull_ups"],["Muscle-ups máx. (reps)","muscle_ups"],["HSPU máx. (reps)","handstand_pushups"],["Push-ups máx. (reps)","max_pushups"]].map(([l,k])=>(
+            <div key={k}>
+              <label style={base.label}>{l}</label>
+              <input style={base.input} type="number" placeholder="reps" value={qForm[k]} onChange={e=>setQForm({...qForm,[k]:e.target.value})} />
+            </div>
+          ))}
+        </div>
+
+        <div style={base.card}>
+          <h2 style={base.h2}>Running</h2>
+          <p style={{ color:"#666",fontSize:13,marginBottom:12,fontFamily:F }}>Formato: minutos:segundos (ej: 25:30). Deja en blanco si no aplica.</p>
+          {[["5km","time_5km"],["10km","time_10km"],["21km (media maratón)","time_21km"]].map(([l,k])=>(
+            <div key={k}>
+              <label style={base.label}>{l}</label>
+              <input style={base.input} type="text" placeholder="mm:ss" value={qForm[k]==="—"?"":qForm[k]} onChange={e=>setQForm({...qForm,[k]:e.target.value})} />
+            </div>
+          ))}
+        </div>
+
+        <div style={base.card}>
+          <h2 style={base.h2}>Notas adicionales</h2>
+          <textarea style={{...base.input,height:80,resize:"vertical"}} placeholder="Lesiones, limitaciones, material disponible, información adicional..." value={qForm.notes} onChange={e=>setQForm({...qForm,notes:e.target.value})} />
+        </div>
+
+        <button style={base.redBtn} onClick={save}>Guardar perfil</button>
+      </div>
     </div>
   );
 }
@@ -571,6 +766,8 @@ export default function App() {
   const [selDate, setSelDate] = useState(todayLocal());
   const [athView, setAthView] = useState("inicio");
   const [paidIds, setPaidIds] = useState([]);
+  const [athProfile, setAthProfile] = useState(null);
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
 
   useEffect(()=>{ const s=document.createElement("style"); s.textContent=PULSE_STYLE; document.head.appendChild(s); return()=>document.head.removeChild(s); },[]);
 
@@ -589,6 +786,9 @@ export default function App() {
       setMessages((m||[]).filter(x=>x.from_id===u.id||x.to_id===u.id));
       const {data:w}=await supabase.from("workouts").select("*").eq("athlete_id",u.id).order("date"); setWorkouts(w||[]);
       const {data:th}=await supabase.from("token_history").select("*").eq("athlete_id",u.id).order("created_at",{ascending:false}); setTokenHistory(th||[]);
+      const {data:ap}=await supabase.from("athlete_profile").select("*").eq("athlete_id",u.id).single();
+      setAthProfile(ap||null);
+      if (!ap) setShowQuestionnaire(true);
     }
   };
 
@@ -600,7 +800,7 @@ export default function App() {
     setLoading(false);
   };
 
-  const logout=()=>{ setUser(null); setEmail(""); setPw(""); setView("home"); setSelectedAthlete(null); setSelectedPlan(null); setChatPartner(null); setPaidIds([]); };
+  const logout=()=>{ setUser(null); setEmail(""); setPw(""); setView("home"); setSelectedAthlete(null); setSelectedPlan(null); setChatPartner(null); setPaidIds([]); setAthProfile(null); setShowQuestionnaire(false); };
   const refresh=()=>{ if (user) load(user); };
 
   const markPaid=async(a)=>{
@@ -916,6 +1116,15 @@ export default function App() {
   }
 
   // ── ATLETA ──
+  if (showQuestionnaire) return (
+    <Questionnaire
+      user={user}
+      existingProfile={athProfile}
+      onSave={()=>{ setShowQuestionnaire(false); load(user); }}
+      onSkip={athProfile?()=>setShowQuestionnaire(false):null}
+    />
+  );
+
   const daysLeft=getDays(user.start_date?calcExpiry(user.start_date):user.expiry);
   const isOnline=user.type==="Online";
   const isPres=user.type==="Presencial";
@@ -925,23 +1134,17 @@ export default function App() {
   const userExpiry=user.start_date?calcExpiry(user.start_date):user.expiry;
   const nextPayment=userPaymentDates.find(d=>d>=today);
   const daysToPayment=nextPayment?getDays(nextPayment):null;
-
-  // ── Vista presencial unificada: día seleccionado + horarios ──
   const athWeekday=getWeekdayFromDate(selDate);
   const athSchedules=schedules.filter(sch=>sch.day===athWeekday);
   const dayWorkouts=workouts.filter(w=>w.date===selDate);
 
   if (chatPartner) return <Chat user={user} partner={chatPartner} messages={messages} onBack={()=>setChatPartner(null)} onRefresh={refresh} />;
 
-  // Navegación según tipo
-  // Presencial: Inicio (cal+reserva), Mensajes, Info
-  // Online: Plan, Mensajes, Info
-  // Mixto: Plan, Inicio (cal+reserva), Mensajes, Info
   const navItems = isOnline
-    ? [["plan","📋","Mi Plan"],["mensajes","💬","Mensajes"],["info","📋","Info"]]
+    ? [["plan","📋","Mi Plan"],["mensajes","💬","Mensajes"],["info","📋","Info"],["progreso","📈","Progreso"]]
     : isPres
-    ? [["inicio","📅","Inicio"],["mensajes","💬","Mensajes"],["info","📋","Info"]]
-    : [["plan","📋","Mi Plan"],["inicio","📅","Clases"],["mensajes","💬","Mensajes"],["info","📋","Info"]];
+    ? [["inicio","📅","Inicio"],["mensajes","💬","Mensajes"],["info","📋","Info"],["progreso","📈","Progreso"]]
+    : [["plan","📋","Mi Plan"],["inicio","📅","Clases"],["mensajes","💬","Mensajes"],["progreso","📈","Progreso"]];
 
   return (
     <div style={base.app}>
@@ -954,7 +1157,6 @@ export default function App() {
       </div>
       <div style={base.main}>
 
-        {/* Stats siempre visibles en plan e inicio */}
         {(athView==="plan"||athView==="inicio")&&<>
           {daysToPayment!==null&&daysToPayment<=3&&(
             <div style={{ background:"#0d0d0d",border:"1px solid #a855f744",borderRadius:12,padding:"10px 14px",marginBottom:12 }}>
@@ -970,7 +1172,6 @@ export default function App() {
           </div>
         </>}
 
-        {/* ── VISTA INICIO: Calendario + Horarios (Presencial/Mixto) ── */}
         {athView==="inicio"&&<>
           <h1 style={{...base.h1,marginBottom:16}}>Clases</h1>
           <MonthCalendar workouts={[]} selectedDate={selDate} onDayClick={setSelDate} paymentDates={userPaymentDates} expiryDate={userExpiry||""} />
@@ -999,7 +1200,6 @@ export default function App() {
           }
         </>}
 
-        {/* ── VISTA PLAN (Online/Mixto) ── */}
         {athView==="plan"&&<>
           <h1 style={{...base.h1,marginBottom:16}}>Mi Planificación</h1>
           <MonthCalendar workouts={workouts} selectedDate={selDate} onDayClick={setSelDate} paymentDates={userPaymentDates} expiryDate={userExpiry||""} />
@@ -1058,6 +1258,79 @@ export default function App() {
               ))}
             </div>
           ))}
+        </>}
+
+        {athView==="progreso"&&<>
+          <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16 }}>
+            <h1 style={{...base.h1,marginBottom:0}}>Mi Progreso</h1>
+            <button style={{...base.redBtn,width:"auto",padding:"10px 16px",fontSize:13}} onClick={()=>setShowQuestionnaire(true)}>✏️ Editar</button>
+          </div>
+
+          {!athProfile?<>
+            <div style={base.card}>
+              <p style={{ color:"#ccc",fontSize:15,fontFamily:F,marginBottom:16 }}>Aún no has completado tu perfil. Hazlo para que tu coach pueda planificarte mejor.</p>
+              <button style={base.redBtn} onClick={()=>setShowQuestionnaire(true)}>Completar mi perfil</button>
+            </div>
+          </>:<>
+            {/* Resumen entrenamientos */}
+            <div style={base.card}>
+              <h2 style={base.h2}>Resumen</h2>
+              <div style={base.grid2}>
+                <div style={{ background:"#0d0d0d",borderRadius:8,padding:12 }}><p style={base.h3}>Completados</p><p className="p-green" style={{ fontWeight:800,fontSize:28,fontFamily:F }}>{workouts.filter(w=>w.done).length}</p></div>
+                <div style={{ background:"#0d0d0d",borderRadius:8,padding:12 }}><p style={base.h3}>Total sesiones</p><p style={{ fontWeight:800,fontSize:28,color:"#fff",fontFamily:F }}>{workouts.length}</p></div>
+                <div style={{ background:"#0d0d0d",borderRadius:8,padding:12 }}><p style={base.h3}>Días/semana</p><p className="p-red" style={{ fontWeight:800,fontSize:28,fontFamily:F }}>{athProfile.training_days_per_week}</p></div>
+                <div style={{ background:"#0d0d0d",borderRadius:8,padding:12 }}><p style={base.h3}>Lugar</p><p style={{ fontWeight:600,fontSize:13,color:"#ccc",fontFamily:F }}>{athProfile.equipment||"—"}</p></div>
+              </div>
+              {athProfile.goals&&<div style={{ background:"#0d0d0d",borderRadius:8,padding:12,marginTop:10 }}>
+                <p style={base.h3}>Objetivos</p>
+                <p style={{ color:"#ccc",fontSize:14,fontFamily:F }}>{athProfile.goals}</p>
+              </div>}
+            </div>
+
+            {/* Halterofilia */}
+            <div style={base.card}>
+              <h2 style={base.h2}>Halterofilia</h2>
+              <div style={base.grid2}>
+                {[["Snatch","snatch"],["C&J","clean_and_jerk"],["Clean","clean"],["Frontal","front_squat"],["Trasera","back_squat"],["Peso Muerto","deadlift"],["OHS","overhead_squat"]].map(([l,k])=>(
+                  <div key={k} style={{ background:"#0d0d0d",borderRadius:8,padding:12 }}>
+                    <p style={base.h3}>{l}</p>
+                    <p className={athProfile[k]?"p-red":""} style={{ fontWeight:800,fontSize:22,color:athProfile[k]?RED:"#333",fontFamily:F }}>{athProfile[k]?`${athProfile[k]}kg`:"—"}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Gimnásticos */}
+            <div style={base.card}>
+              <h2 style={base.h2}>Gimnásticos</h2>
+              <div style={base.grid2}>
+                {[["Pull-ups","pull_ups"],["Muscle-ups","muscle_ups"],["HSPU","handstand_pushups"],["Push-ups","max_pushups"]].map(([l,k])=>(
+                  <div key={k} style={{ background:"#0d0d0d",borderRadius:8,padding:12 }}>
+                    <p style={base.h3}>{l}</p>
+                    <p className={athProfile[k]?"p-red":""} style={{ fontWeight:800,fontSize:22,color:athProfile[k]?RED:"#333",fontFamily:F }}>{athProfile[k]?`${athProfile[k]} reps`:"—"}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Running */}
+            <div style={base.card}>
+              <h2 style={base.h2}>Running</h2>
+              <div style={base.grid2}>
+                {[["5km","time_5km"],["10km","time_10km"],["21km","time_21km"]].map(([l,k])=>(
+                  <div key={k} style={{ background:"#0d0d0d",borderRadius:8,padding:12 }}>
+                    <p style={base.h3}>{l}</p>
+                    <p className={athProfile[k]?"p-red":""} style={{ fontWeight:800,fontSize:22,color:athProfile[k]?RED:"#333",fontFamily:F }}>{formatTime(athProfile[k])}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {athProfile.notes&&<div style={base.card}>
+              <h2 style={base.h2}>Notas</h2>
+              <p style={{ color:"#bbb",fontSize:14,fontFamily:F }}>{athProfile.notes}</p>
+            </div>}
+          </>}
         </>}
 
       </div>
